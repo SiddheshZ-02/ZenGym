@@ -7,10 +7,10 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 
 ## 📥 Download
 
-[Download App (APK)](https://docs.google.com/uc?export=download&id=1IrkUw8LpP5AEJMEVJT4TSR7PLgPXoPzp)
+[Download App (APK)](https://docs.google.com/uc?export=download&id=1DBjRAy17s04ll0rDODUh-g9fO9O5nAsR)
 
 
-<img width="200" height="200" alt="1757401187331" src="https://github.com/user-attachments/assets/9538f0b8-a804-4403-8c87-d3a986c4f457" />
+<img width="200" height="200" alt="1757401187331" src="https://github.com/user-attachments/assets/db8fe5d2-3508-49c4-b3cc-e1517413d7b2" />
 
 
 1. Install dependencies
