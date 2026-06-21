@@ -1,5 +1,8 @@
+import { ExerciseType, useDataStore } from "@/store/DataStore";
+import { showToast } from "@/utils/toast";
 import AntDesign from "@expo/vector-icons/AntDesign";
-import { ImageBackground } from "expo-image";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -9,195 +12,341 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ExerciseArray } from "@/utils/ExerciseData";
-import { useAppContext } from "@/Context/ContextProvider";
-
-interface exercisesInfo {
-  id: number;
-  name: string;
-  gifUrl: any;
-  category: string;
-  difficulty: string;
-  equipment: string;
-  description: string;
-  target: string;
-  instructions: string[];
-  bodyPart: string;
-  secondaryMuscles?: any;
-}
 
 const { height, width } = Dimensions.get("window");
 
-const exercisesDetails = () => {
-  const [info, setInfo] = useState<exercisesInfo | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+const ExercisesDetails = () => {
+  const [info, setInfo] = useState<ExerciseType | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
   const router = useRouter();
   const { exercisesDetails } = useLocalSearchParams();
-  const { exercisesList, setExercisesList } = useAppContext();
- 
+  const { workoutList, addExerciseToWorkout, fetchExerciseById } =
+    useDataStore();
 
-  const exercisesFilter = () => {
-    const filterexe = ExerciseArray?.find((item) => {
-      return item.id === Number(exercisesDetails);
-    });
-    setInfo(filterexe ?? null);
+  const loadExercise = async () => {
+    if (!exercisesDetails) return;
+    setLoading(true);
+    try {
+      const id = Number(exercisesDetails);
+      const exercise = await fetchExerciseById(id);
+      setInfo(exercise);
+    } catch (error) {
+      console.error("Error loading exercise:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleAddExercises = () => {
+  useEffect(() => {
+    loadExercise();
+  }, [exercisesDetails]);
+
+  const handleAddExercises = async () => {
     if (info) {
-      if (exercisesList.some((item: exercisesInfo) => item.id === info.id)) {
-        Alert.alert(
-          "Already Added",
-         
-        );
+      if (workoutList.some((item) => item.id === info.id)) {
+        showToast("info", "This exercise is already in your workout list!");
       } else {
-        setExercisesList([...exercisesList, info]);
-        Alert.alert(
-          "Added to Workout List",
-        );
+        await addExerciseToWorkout(info);
+        showToast("success", "Exercise has been added successfully!");
       }
     }
   };
 
-  const isExerciseInList = info ? exercisesList.some((item: exercisesInfo) => item.id === info.id) : false;
+  const isExerciseInList = info
+    ? workoutList.some((item: any) => item.id === info.id)
+    : false;
 
-  useEffect(() => {
-    if (exercisesDetails) {
-      exercisesFilter();
-    }
-  }, [exercisesDetails]);
+  if (loading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "black",
+        }}
+      >
+        <ActivityIndicator size="large" color="#32CD32" />
+      </View>
+    );
+  }
 
-  return loading ? (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <ActivityIndicator size="large" color="#32CD32" />
-    </View>
-  ) : (
+  if (!info) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "black",
+        }}
+      >
+        <Text style={{ color: "white", fontSize: 18 }}>
+          Exercise not found!
+        </Text>
+        <TouchableOpacity
+          style={{
+            marginTop: 20,
+            padding: 10,
+            backgroundColor: "#32CD32",
+            borderRadius: 10,
+          }}
+          onPress={() => router.back()}
+        >
+          <Text style={{ color: "black", fontWeight: "bold" }}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
     <View style={{ flex: 1, backgroundColor: "black" }}>
       <SafeAreaView />
       <View
         style={{
-          paddingInline: 10,
+          paddingHorizontal: 10,
           flexDirection: "row",
-          gap: 5,
-          width: width * 0.85,
+          gap: 10,
+          alignItems: "center",
+          justifyContent: "space-between",
         }}
       >
-        <TouchableOpacity
-          style={{ marginBlock: 10 }}
-          onPress={() =>
-            router.push({
-              pathname: "/BodyPart/[name]",
-              params: { name: info ? info.bodyPart : "" },
-            })
-          }
-        >
-          <AntDesign name="leftcircle" size={50} color="#32CD32" />
+        <TouchableOpacity style={{ padding: 5 }} onPress={() => router.back()}>
+          <AntDesign name="left-circle" size={40} color="#32CD32" />
         </TouchableOpacity>
 
-        <View style={{ width: width * 0.65 }}>
+        <View style={{ flex: 1, alignItems: "center" }}>
           <Text
             style={{
-              fontSize: 22,
-              fontWeight: 700,
+              fontSize: 20,
+              fontWeight: "700",
               textAlign: "center",
               backgroundColor: "#32CD32",
               padding: 10,
               borderRadius: 50,
-              marginBlock: 10,
+              marginVertical: 10,
               textTransform: "capitalize",
+              color: "black",
             }}
-            numberOfLines={1}
+            numberOfLines={2}
           >
-            {info?.name}
+            {info.name}
           </Text>
         </View>
 
         <TouchableOpacity
           onPress={handleAddExercises}
-          style={{ 
-            marginBlock: 10,
+          style={{
+            padding: 5,
             opacity: isExerciseInList ? 0.5 : 1,
           }}
           disabled={isExerciseInList}
         >
-          <AntDesign 
-            name={isExerciseInList ? "checkcircle" : "pluscircle"} 
-            size={50} 
-            color={isExerciseInList ? "#4CAF50" : "#32CD32"} 
+          <MaterialIcons
+            name={isExerciseInList ? "check-circle" : "add-circle-outline"}
+            size={40}
+            color={isExerciseInList ? "#4CAF50" : "#32CD32"}
           />
         </TouchableOpacity>
       </View>
-
-    
 
       <View
         style={{
           height: 380,
           overflow: "hidden",
           borderRadius: 40,
+          marginHorizontal: 10,
         }}
       >
-        <ImageBackground
-          source={{uri:info?.gifUrl}}
-          style={{ height: 380, width: width, position: "fixed" }}
+        <Image
+          source={
+            info.gif_url ||
+            "https://placehold.co/380x380/32CD32/000?text=" +
+              encodeURIComponent(info.name)
+          }
+          style={{ height: 380, width: "100%" }}
+          contentFit="cover"
+          autoplay={true}
         />
       </View>
 
-      <ScrollView style={{ flex: 1, paddingInline: 10 }}>
-        <View style={{ gap: 10, marginBottom: 80 }}>
+      <ScrollView style={{ flex: 1, paddingHorizontal: 15, marginTop: 20 }}>
+        <View style={{ gap: 15, marginBottom: 100 }}>
           <Text
             style={{
-              fontSize: 30,
-              fontWeight: 600,
+              fontSize: 28,
+              fontWeight: "bold",
               color: "#32CD32",
               textAlign: "center",
               textTransform: "capitalize",
             }}
           >
-            {info?.name}
+            {info.name}
           </Text>
 
-          <Text style={{ fontSize: 18, color: "white" }}>
-            <Text style={{ fontSize: 20, fontWeight: 600 }}>Category: </Text>
-            {info?.category}
-          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: 10,
+              justifyContent: "center",
+            }}
+          >
+            {info.category && (
+              <View
+                style={{
+                  backgroundColor: "#2a2a2a",
+                  paddingHorizontal: 15,
+                  paddingVertical: 8,
+                  borderRadius: 20,
+                }}
+              >
+                <Text style={{ color: "#fff" }}>
+                  Category:{" "}
+                  <Text style={{ color: "#32CD32", fontWeight: "600" }}>
+                    {info.category}
+                  </Text>
+                </Text>
+              </View>
+            )}
+            {info.difficulty && (
+              <View
+                style={{
+                  backgroundColor: "#2a2a2a",
+                  paddingHorizontal: 15,
+                  paddingVertical: 8,
+                  borderRadius: 20,
+                }}
+              >
+                <Text style={{ color: "#fff" }}>
+                  Difficulty:{" "}
+                  <Text style={{ color: "#32CD32", fontWeight: "600" }}>
+                    {info.difficulty}
+                  </Text>
+                </Text>
+              </View>
+            )}
+            {info.target && (
+              <View
+                style={{
+                  backgroundColor: "#2a2a2a",
+                  paddingHorizontal: 15,
+                  paddingVertical: 8,
+                  borderRadius: 20,
+                }}
+              >
+                <Text style={{ color: "#fff" }}>
+                  Target:{" "}
+                  <Text style={{ color: "#32CD32", fontWeight: "600" }}>
+                    {info.target}
+                  </Text>
+                </Text>
+              </View>
+            )}
+          </View>
 
-          <Text style={{ fontSize: 18, color: "white" }}>
-            <Text style={{ fontSize: 20, fontWeight: 600 }}>Difficulty: </Text>
-            {info?.difficulty}
-          </Text>
+          {info.equipment && (
+            <View
+              style={{
+                backgroundColor: "#1a1a1a",
+                padding: 15,
+                borderRadius: 15,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: "600",
+                  color: "#32CD32",
+                  marginBottom: 8,
+                }}
+              >
+                Equipment Needed
+              </Text>
+              <Text style={{ fontSize: 16, color: "white" }}>
+                {info.equipment}
+              </Text>
+            </View>
+          )}
 
-          <Text style={{ fontSize: 18, color: "white" }}>
-            <Text style={{ fontSize: 20, fontWeight: 600 }}>Equipment: </Text>
-            {info?.equipment}
-          </Text>
+          {info.description && (
+            <View
+              style={{
+                backgroundColor: "#1a1a1a",
+                padding: 15,
+                borderRadius: 15,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: "600",
+                  color: "#32CD32",
+                  marginBottom: 8,
+                }}
+              >
+                Description
+              </Text>
+              <Text style={{ fontSize: 16, color: "white", lineHeight: 24 }}>
+                {info.description}
+              </Text>
+            </View>
+          )}
 
-          <Text style={{ fontSize: 18, color: "white" }}>
-            <Text style={{ fontSize: 20, fontWeight: 600 }}>
-              Description :
-            </Text>
-            {info?.description}
-          </Text>
-
-          <Text style={{ fontSize: 18, color: "white" }}>
-            <Text style={{ fontSize: 20, fontWeight: 600 }}>Target : </Text>
-            {info?.target}
-          </Text>
-
-          <Text style={{ fontSize: 18, color: "white" }}>
-            <Text style={{ fontSize: 20, fontWeight: 600 }}>
-              Instructions:
-            </Text>
-            {info?.instructions}
-          </Text>
+          {info.instructions && Array.isArray(info.instructions) && (
+            <View
+              style={{
+                backgroundColor: "#1a1a1a",
+                padding: 15,
+                borderRadius: 15,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: "600",
+                  color: "#32CD32",
+                  marginBottom: 12,
+                }}
+              >
+                Instructions
+              </Text>
+              {info.instructions.map((instruction, index) => (
+                <View
+                  key={index}
+                  style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      color: "#32CD32",
+                      fontWeight: "bold",
+                      minWidth: 20,
+                    }}
+                  >
+                    {index + 1}.
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      color: "white",
+                      flex: 1,
+                      lineHeight: 24,
+                    }}
+                  >
+                    {instruction}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
     </View>
   );
 };
 
-export default exercisesDetails;
+export default ExercisesDetails;

@@ -1,13 +1,13 @@
+import { useDataStore } from "@/store/DataStore";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import { Tabs, useRouter } from "expo-router";
 import React from "react";
-import { Text, TouchableOpacity, View, StyleSheet } from "react-native";
-import { useAppContext } from "@/Context/ContextProvider";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-const router = useRouter();
-const _layout = () => {
-  const { exercisesList } = useAppContext();
-  const workoutCount = exercisesList.length;
+const TabBarLayout = () => {
+  const router = useRouter();
+  const { workoutList } = useDataStore();
+  const workoutCount = workoutList.length;
 
   return (
     <Tabs
@@ -75,7 +75,6 @@ const _layout = () => {
         name="Home"
         options={{
           headerShown: false,
-         
 
           tabBarIcon: ({ focused }) => {
             return focused ? (
@@ -119,4 +118,4 @@ const styles = StyleSheet.create({
   badgeText: {},
 });
 
-export default _layout;
+export default TabBarLayout;

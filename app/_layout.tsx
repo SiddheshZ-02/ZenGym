@@ -1,18 +1,26 @@
-import ContextProvider from "@/Context/ContextProvider";
+import { useAuthStore } from "@/store/AuthStore";
 import { Stack } from "expo-router";
-import React from "react";
+import React, { useEffect } from "react";
+import Toast from "react-native-toast-message";
 
-const _layout = () => {
- 
+const RootLayout = () => {
+  const { initializeAuth } = useAuthStore();
+
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
 
   return (
-    <ContextProvider>
-      <Stack>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabbar)" options={{ headerShown: false }} />
+    <>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="signup" />
+        <Stack.Screen name="(tabbar)" />
       </Stack>
-    </ContextProvider>
+      <Toast />
+    </>
   );
 };
 
-export default _layout;
+export default RootLayout;

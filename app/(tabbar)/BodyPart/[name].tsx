@@ -1,94 +1,62 @@
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
-  FlatList,
-  ImageBackground,
+  StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
-  Image,
-  TextInput,
-  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { BodyPart } from "@/utils/ExerciseData";
-import { LegendList } from "@legendapp/list";
-
-import { ExerciseArray } from "@/utils/ExerciseData";
+import { ExerciseType, useDataStore } from "@/store/DataStore";
 import AntDesign from "@expo/vector-icons/AntDesign";
-import Index from "@/app";
+import { LegendList } from "@legendapp/list";
 
 const { height, width } = Dimensions.get("window");
 
-interface exerciseDetailsType {
-  id: number;
-  name: string;
-  gifUrl: any;
-  category: string;
-  difficulty: string;
-  equipment: string;
-  description: string;
-  target: string;
-  instructions: string[];
-  bodyPart: string;
-  secondaryMuscles?: any;
-}
-
 const NamePage = () => {
-  const [parts, setparts] = useState<exerciseDetailsType[] | null>(null);
-  const [filteredParts, setFilteredParts] = useState<
-    exerciseDetailsType[] | null
-  >(null);
+  const [filteredParts, setFilteredParts] = useState<ExerciseType[]>([]);
   const [searchText, setSearchText] = useState("");
-  const [filterType, setFilterType] = useState<"name" | "bodyPart" | "target">(
-    "name"
-  );
-  const [storeImage, setStoreImage] = useState();
-  const [loading, setLoading] = useState<Boolean>(false);
 
   const router = useRouter();
   const { name } = useLocalSearchParams();
+  const { exercises, loading, fetchExercises } = useDataStore();
 
-  const filterArray = () => {
+  // Fetch data when component mounts
+  useEffect(() => {
     if (name) {
-      const dataStore = BodyPart.find((item) => {
-        return item.name == name;
-      })?.image;
-      setStoreImage(dataStore);
+      fetchExercises(name as string);
     }
-  };
-  const filterFunc = () => {
-    const filterExercises = ExerciseArray.filter((item) => {
-      return item.bodyPart === name;
-    });
-    setparts(filterExercises);
-    setFilteredParts(filterExercises);
-  };
+  }, [name, fetchExercises]);
 
+  // Filter exercises
   useEffect(() => {
-    filterFunc();
-    filterArray();
-  }, [name]);
+    setFilteredParts(exercises);
+  }, [exercises]);
 
+  // Search filter
   useEffect(() => {
-    if (!parts) return;
     if (searchText.trim() === "") {
-      setFilteredParts(parts);
+      setFilteredParts(exercises);
       return;
     }
-    const filtered = parts.filter((item) => {
+    const filtered = exercises.filter((item) => {
       const search = searchText.toLowerCase();
+      const itemName = item.name || "";
+      const itemBodyPart = item.body_part || "";
+      const itemTarget = item.target || "";
       return (
-        item.name.toLowerCase().includes(search) ||
-        item.bodyPart.toLowerCase().includes(search) ||
-        item.target.toLowerCase().includes(search)
+        itemName.toLowerCase().includes(search) ||
+        itemBodyPart.toLowerCase().includes(search) ||
+        itemTarget.toLowerCase().includes(search)
       );
     });
     setFilteredParts(filtered);
-  }, [searchText, parts]);
+  }, [searchText, exercises]);
 
   const handleDetails = (id: number) => {
     router.push({
@@ -112,7 +80,7 @@ const NamePage = () => {
       <View style={styles.searchBarContainer}>
         <View style={styles.searchBarInner}>
           <AntDesign
-            name="search1"
+            name="search"
             size={22}
             color="#32CD32"
             style={{ marginRight: 8 }}
@@ -129,14 +97,14 @@ const NamePage = () => {
       {/* Name Heading below search bar, always visible, with back button on left */}
       <View style={styles.headingContainerRow}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <AntDesign name="leftcircle" size={36} color="#32CD32" />
+          <AntDesign name="left-circle" size={36} color="#32CD32" />
         </TouchableOpacity>
         <Text style={styles.headingTextWithBack}>{name}</Text>
       </View>
       {/* List below search bar and heading, always scrollable */}
       <View style={{ flex: 1, left: 6 }}>
         <LegendList
-          data={filteredParts || []}
+          data={filteredParts}
           numColumns={2}
           recycleItems
           contentContainerStyle={{ paddingBottom: 30 }}
@@ -152,8 +120,15 @@ const NamePage = () => {
                 onPress={() => handleDetails(item.id)}
               >
                 <Image
-                  source={{ uri: item?.gifUrl }}
+                  source={
+                    item.gif_url
+                      ? item.gif_url
+                      : "https://placehold.co/190x190/32CD32/000?text=" +
+                        item.name
+                  }
                   style={{ height: 190, width: 190, borderRadius: 30 }}
+                  autoplay={false}
+                  contentFit="cover"
                 />
                 <Text
                   style={{

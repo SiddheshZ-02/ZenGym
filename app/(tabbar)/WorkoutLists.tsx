@@ -1,46 +1,30 @@
-import React from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  Image,
-  StyleSheet,
-  Dimensions,
-  Alert,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { useAppContext } from "@/Context/ContextProvider";
+import { useAuthStore } from "@/store/AuthStore";
+import { useDataStore } from "@/store/DataStore";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { LegendList } from "@legendapp/list";
+import { Image } from "expo-image";
+import { useRouter } from "expo-router";
+import React from "react";
+import { ActivityIndicator, Dimensions, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { showToast } from "@/utils/toast";
 
 const { width, height } = Dimensions.get("window");
 
 const WorkoutLists = () => {
-  const { exercisesList, setExercisesList } = useAppContext();
+  const { workoutList, removeExerciseFromWorkout, workoutLoading } = useDataStore();
+  const { signOut } = useAuthStore();
   const router = useRouter();
 
-  const removeWorkout = (id: number) => {
-    Alert.alert(
-      "Remove Workout",
-      "Are you sure you want to remove this workout from your list?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: () => {
-            setExercisesList(
-              exercisesList.filter((workout) => workout.id !== id)
-            );
-          },
-        },
-      ]
-    );
+  const handleLogout = async () => {
+    await signOut();
+    showToast("success", "Logged out successfully!");
+    router.replace("/login");
+  };
+
+  const removeWorkout = async (id: number) => {
+    await removeExerciseFromWorkout(id);
+    showToast("info", "Exercise removed from workout list!");
   };
 
   const navigateToExerciseDetails = (exerciseId: number) => {
@@ -71,7 +55,16 @@ const WorkoutLists = () => {
           marginRight: 15,
         }}
       >
-        <Image source={item.gifUrl} style={{ width: "100%", height: "100%" }} />
+        <Image
+          source={
+            item.gif_url ||
+            item.gifUrl ||
+            "https://placehold.co/80x80/32CD32/000?text=Ex"
+          }
+          style={{ width: "100%", height: "100%" }}
+          autoplay={false}
+          contentFit="cover"
+        />
       </View>
 
       <View style={{ flex: 1 }}>
@@ -113,32 +106,58 @@ const WorkoutLists = () => {
           paddingVertical: 15,
           borderBottomWidth: 1,
           borderBottomColor: "#333",
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
         }}
       >
-        <Text
+        <View style={{ width: 60 }} />
+        <View style={{ flex: 1, alignItems: "center" }}>
+          <Text
+            style={{
+              fontSize: 28,
+              fontWeight: "bold",
+              color: "#32CD32",
+              textAlign: "center",
+            }}
+          >
+            My Workout List
+          </Text>
+          <Text
+            style={{
+              fontSize: 16,
+              color: "#999",
+              textAlign: "center",
+              marginTop: 5,
+            }}
+          >
+            {workoutList.length}{" "}
+            {workoutList.length === 1 ? "workout" : "workouts"}
+          </Text>
+        </View>
+        <TouchableOpacity
           style={{
-            fontSize: 28,
-            fontWeight: "bold",
-            color: "#32CD32",
-            textAlign: "center",
+            padding: 8,
+            backgroundColor: "#2a2a2a",
+            borderRadius: 10,
           }}
+          onPress={handleLogout}
         >
-          My Workout List
-        </Text>
-        <Text
-          style={{
-            fontSize: 16,
-            color: "#999",
-            textAlign: "center",
-            marginTop: 5,
-          }}
-        >
-          {exercisesList.length}{" "}
-          {exercisesList.length === 1 ? "workout" : "workouts"}
-        </Text>
+          <AntDesign name="logout" size={24} color="#ff4444" />
+        </TouchableOpacity>
       </View>
 
-      {exercisesList.length === 0 ? (
+      {workoutLoading ? (
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <ActivityIndicator size="large" color="#32CD32" />
+        </View>
+      ) : workoutList.length === 0 ? (
         <View
           style={{
             flex: 1,
@@ -173,18 +192,16 @@ const WorkoutLists = () => {
         </View>
       ) : (
         <LegendList
-          data={exercisesList}
+          data={workoutList}
           renderItem={renderWorkoutItem}
           recycleItems
           keyExtractor={(item) => item.id.toString()}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{   padding: 15,}}
+          contentContainerStyle={{ padding: 15 }}
         />
       )}
     </View>
   );
 };
-
-
 
 export default WorkoutLists;
