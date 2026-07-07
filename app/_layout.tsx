@@ -16,7 +16,7 @@ const App = () => {
     <SafeAreaProvider>
       <AppSystemProvider>
         <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
+          <Stack.Screen name="Screen/Auth/index" />
           <Stack.Screen name="Screen/Auth/LoginScreen" />
           <Stack.Screen name="Screen/Auth/SignupScreen" />
           <Stack.Screen name="TabNavigation" />

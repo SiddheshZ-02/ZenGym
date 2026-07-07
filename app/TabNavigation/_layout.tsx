@@ -99,11 +99,6 @@ const TabsLayout = () => {
       }}
     >
       <Tabs.Screen name="HomeScreen" />
-      <Tabs.Screen name="BodyPart/[name]" options={{ href: null }} />
-      <Tabs.Screen
-        name="Details/[exercisesDetails]"
-        options={{ href: null }}
-      />
       <Tabs.Screen name="WorkoutListsScreen" />
     </Tabs>
   );

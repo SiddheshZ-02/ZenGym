@@ -20,6 +20,7 @@ const useStyles = createThemedStyles((_, responsive) => {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
+      backgroundColor: "#000",
     },
     sectionShell: {
       paddingHorizontal: spacing.md,

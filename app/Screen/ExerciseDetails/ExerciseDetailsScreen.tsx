@@ -1,15 +1,15 @@
 import { createThemedStyles } from "@/constants/responsive";
 import { ExerciseType, useDataStore } from "@/store/dataStore";
 import { showToast } from "@/utils/toast";
-import { Entypo, Feather } from "@expo/vector-icons";
-import AntDesign from "@expo/vector-icons/AntDesign";
+import { Feather } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  ScrollView,
+  Animated,
+  Dimensions,
   StatusBar,
   StyleSheet,
   Text,
@@ -18,20 +18,17 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const useStyles = createThemedStyles((_, responsive) => {
-  const {
-    spacing,
-    radius,
-    fontSizes,
-    ms,
-    hp,
-    wp,
-    isSmallPhone,
-    containerMaxWidth,
-  } = responsive;
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-  const heroHeight = isSmallPhone ? hp(300) : hp(360);
-  const headerIconSize = isSmallPhone ? ms(36) : ms(40);
+// ---- Tune these to taste ----
+const HERO_HEIGHT = 360; // expanded hero image height
+const HERO_MIN_SIZE = 72; // collapsed hero image size (square, top-left)
+const HEADER_TOP = 50; // top offset for the collapsed header row
+const COLLAPSE_RANGE = HERO_HEIGHT - HERO_MIN_SIZE; // scroll distance over which collapse happens
+
+const useStyles = createThemedStyles((_, responsive) => {
+  const { spacing, radius, fontSizes, ms, containerMaxWidth, isSmallPhone } =
+    responsive;
 
   return StyleSheet.create({
     safeArea: {
@@ -61,6 +58,21 @@ const useStyles = createThemedStyles((_, responsive) => {
       fontWeight: "700",
       fontSize: fontSizes.md,
     },
+
+    // Top nav row (back button / add button) - always fixed, above everything
+    navRow: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 30,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: spacing.md,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.sm,
+    },
     headerRow: {
       paddingHorizontal: spacing.md,
       flexDirection: "row",
@@ -70,7 +82,7 @@ const useStyles = createThemedStyles((_, responsive) => {
       maxWidth: containerMaxWidth,
       alignSelf: "center",
       width: "100%",
-         backgroundColor: "#32CD32",
+      backgroundColor: "#32CD32",
     },
     headerButton: {
       padding: spacing.xs,
@@ -90,41 +102,43 @@ const useStyles = createThemedStyles((_, responsive) => {
       textTransform: "capitalize",
       color: "#000",
     },
-    heroImageShell: {
-      height: heroHeight,
-      overflow: "hidden",
-      borderRadius: radius.xl,
-      marginHorizontal: spacing.md,
-      marginTop: spacing.sm,
-      alignSelf: "center",
-      width: "100%",
-      maxWidth: containerMaxWidth,
+    navButton: {
+      padding: spacing.xs,
+      backgroundColor: "rgba(0,0,0,0.4)",
+      borderRadius: radius.full,
     },
-    heroImage: {
-      height: "100%",
-      width: "100%",
+
+    // Animated hero image - absolutely positioned, sits above scroll content
+    heroWrap: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      zIndex: 20,
+      overflow: "hidden",
       backgroundColor: "#1a1a1a",
     },
-    scroll: {
-      flex: 1,
-    },
-    scrollContent: {
-      paddingHorizontal: spacing.md,
-      paddingTop: spacing.lg,
-      paddingBottom: spacing.xxl,
-      alignSelf: "center",
+    heroImage: {
       width: "100%",
-      maxWidth: containerMaxWidth,
+      height: "100%",
+      backgroundColor: "#1a1a1a",
     },
-    contentStack: {
-      gap: spacing.md,
+
+    // Big centered title block (fades out on scroll)
+    expandedInfoWrap: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      zIndex: 15,
+      alignItems: "center",
+      paddingHorizontal: spacing.md,
     },
     pageTitle: {
-      fontSize: isSmallPhone ? fontSizes.xl : fontSizes.xxl,
+      fontSize: fontSizes.xxl,
       fontWeight: "bold",
       color: "#32CD32",
       textAlign: "center",
       textTransform: "capitalize",
+      marginBottom: spacing.sm,
     },
     tagRow: {
       flexDirection: "row",
@@ -145,6 +159,54 @@ const useStyles = createThemedStyles((_, responsive) => {
     tagHighlight: {
       color: "#32CD32",
       fontWeight: "600",
+    },
+
+    // Compact card that slides in to the right of the shrunk hero image
+    compactCard: {
+      position: "absolute",
+      left: HERO_MIN_SIZE + 30,
+      right: 12,
+      top: HEADER_TOP,
+      height: HERO_MIN_SIZE,
+      zIndex: 20,
+      backgroundColor: "black",
+      borderRadius: radius.lg,
+      paddingHorizontal: spacing.md,
+      justifyContent: "center",
+      gap: 2,
+    },
+    compactCard1: {
+      position: "relative",
+      left: HERO_MIN_SIZE - 72,
+      right: 12,
+      height: HERO_MIN_SIZE + 20,
+      backgroundColor: "#1a1a1a",
+      borderRadius: radius.lg,
+      paddingHorizontal: spacing.md,
+      justifyContent: "center",
+      gap: 2,
+    },
+    compactTitle: {
+      fontSize: fontSizes.md,
+      fontWeight: "700",
+      color: "#32CD32",
+      textTransform: "capitalize",
+    },
+    compactSubtitle: {
+      fontSize: fontSizes.xs ?? 12,
+      color: "#ccc",
+    },
+
+    // Scrollable content
+    scrollContent: {
+      paddingHorizontal: spacing.md,
+      paddingBottom: 60,
+      alignSelf: "center",
+      width: "100%",
+      maxWidth: containerMaxWidth,
+    },
+    contentStack: {
+      gap: spacing.md,
     },
     infoCard: {
       backgroundColor: "#1a1a1a",
@@ -172,7 +234,7 @@ const useStyles = createThemedStyles((_, responsive) => {
       fontSize: fontSizes.md,
       color: "#32CD32",
       fontWeight: "bold",
-      minWidth: wp(20),
+      minWidth: 20,
     },
     instructionText: {
       fontSize: fontSizes.md,
@@ -192,6 +254,24 @@ const ExerciseDetailsScreen = () => {
   const { workoutList, addExerciseToWorkout, fetchExerciseById } =
     useDataStore();
   const styles = useStyles();
+
+  const [isGifPlaying, setIsGifPlaying] = useState(true);
+
+  const GIF_STOP_THRESHOLD = COLLAPSE_RANGE * 0.55;
+  const GIF_RESUME_THRESHOLD = COLLAPSE_RANGE * 0.35;
+
+  // Drives every collapse animation
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const id = scrollY.addListener(({ value }) => {
+      if (value >= GIF_STOP_THRESHOLD)
+        setIsGifPlaying((prev) => (prev ? false : prev));
+      else if (value <= GIF_RESUME_THRESHOLD)
+        setIsGifPlaying((prev) => (!prev ? true : prev));
+    });
+    return () => scrollY.removeListener(id);
+  }, [scrollY]);
 
   const loadExercise = async () => {
     if (!exercisesDetails) return;
@@ -252,14 +332,90 @@ const ExerciseDetailsScreen = () => {
     );
   }
 
+  // ----- Interpolations -----
+
+  // Hero image: size shrinks from full width/height down to a small square,
+  // and moves to top-left corner (HEADER_TOP / left margin).
+  const heroSize = scrollY.interpolate({
+    inputRange: [0, COLLAPSE_RANGE],
+    outputRange: [SCREEN_WIDTH - 32, HERO_MIN_SIZE],
+    extrapolate: "clamp",
+  });
+
+  const heroTop = scrollY.interpolate({
+    inputRange: [0, COLLAPSE_RANGE],
+    outputRange: [HERO_HEIGHT > 0 ? 100 : 0, HEADER_TOP],
+    extrapolate: "clamp",
+  });
+
+  const heroLeft = scrollY.interpolate({
+    inputRange: [0, COLLAPSE_RANGE],
+    outputRange: [16, 16],
+    extrapolate: "clamp",
+  });
+
+  const heroRadius = scrollY.interpolate({
+    inputRange: [0, COLLAPSE_RANGE],
+    outputRange: [24, 16],
+    extrapolate: "clamp",
+  });
+
+  // Big centered title/tags block: fades + shifts up, disappears early
+  const expandedInfoTop = scrollY.interpolate({
+    inputRange: [0, COLLAPSE_RANGE],
+    outputRange: [
+      100 + (SCREEN_WIDTH - 32) + 16,
+      100 + (SCREEN_WIDTH - 32) + 16,
+    ],
+    extrapolate: "clamp",
+  });
+
+  const expandedInfoOpacity = scrollY.interpolate({
+    inputRange: [0, COLLAPSE_RANGE * 0.4, COLLAPSE_RANGE * 0.7],
+    outputRange: [1, 1, 0],
+    extrapolate: "clamp",
+  });
+
+  const expandedInfoTranslateY = scrollY.interpolate({
+    inputRange: [0, COLLAPSE_RANGE],
+    outputRange: [0, -30],
+    extrapolate: "clamp",
+  });
+
+  // Compact card (name/category/difficulty/target) next to the shrunk image
+  const compactCardOpacity = scrollY.interpolate({
+    inputRange: [COLLAPSE_RANGE * 0.5, COLLAPSE_RANGE],
+    outputRange: [0, 1],
+    extrapolate: "clamp",
+  });
+
+  const compactCardTranslateX = scrollY.interpolate({
+    inputRange: [COLLAPSE_RANGE * 0.5, COLLAPSE_RANGE],
+    outputRange: [30, 0],
+    extrapolate: "clamp",
+  });
+  const compactCardTranslateY = scrollY.interpolate({
+    inputRange: [COLLAPSE_RANGE * 0.5, COLLAPSE_RANGE],
+    outputRange: [-80, 0],
+    extrapolate: "clamp",
+  });
+
+  // How much top padding the scroll content needs so it starts right
+  // below the fully expanded hero + title block.
+  const scrollContentTopPadding = 100 + (SCREEN_WIDTH - 32) + 16 + 10; // hero top offset + hero height + gap + title block estimate
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar backgroundColor="#32CD32" barStyle="dark-content" />
 
       <View style={styles.screen}>
+        {/* Fixed nav row, always on top */}
         <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.headerButton} onPress={() => router.back()}>
-              <Feather name="chevron-left" size={28} color="black" />
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => router.back()}
+          >
+            <Feather name="chevron-left" size={28} color="black" />
           </TouchableOpacity>
 
           <View style={styles.titleWrap}>
@@ -270,7 +426,10 @@ const ExerciseDetailsScreen = () => {
 
           <TouchableOpacity
             onPress={handleAddExercises}
-            style={[styles.headerButton, { opacity: isExerciseInList ? 0.5 : 1 }]}
+            style={[
+              styles.headerButton,
+              { opacity: isExerciseInList ? 0.5 : 1 },
+            ]}
             disabled={isExerciseInList}
           >
             <MaterialIcons
@@ -281,7 +440,19 @@ const ExerciseDetailsScreen = () => {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.heroImageShell}>
+        {/* Animated collapsing hero image */}
+        <Animated.View
+          style={[
+            styles.heroWrap,
+            {
+              width: heroSize,
+              height: heroSize,
+              top: heroTop,
+              left: heroLeft,
+              borderRadius: heroRadius,
+            },
+          ]}
+        >
           <Image
             source={
               info.gif_url
@@ -291,42 +462,99 @@ const ExerciseDetailsScreen = () => {
             }
             style={styles.heroImage}
             contentFit="cover"
-            autoplay
+            autoplay={isGifPlaying}
             placeholder={{ blurhash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4" }}
             transition={500}
             cachePolicy="memory-disk"
           />
-        </View>
+        </Animated.View>
 
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+        {/* Big centered title/tags — fades out as you scroll */}
+        <Animated.View
+          style={[
+            styles.expandedInfoWrap,
+            {
+              top: expandedInfoTop,
+              opacity: expandedInfoOpacity,
+              transform: [{ translateY: expandedInfoTranslateY }],
+            },
+          ]}
+          pointerEvents="none"
+        >
+          <Text style={styles.pageTitle}>{info.name}</Text>
+          <View style={styles.tagRow}>
+            {info.category && (
+              <View style={styles.tagChip}>
+                <Text style={styles.tagText}>
+                  Category:{" "}
+                  <Text style={styles.tagHighlight}>{info.category}</Text>
+                </Text>
+              </View>
+            )}
+            {info.difficulty && (
+              <View style={styles.tagChip}>
+                <Text style={styles.tagText}>
+                  Difficulty:{" "}
+                  <Text style={styles.tagHighlight}>{info.difficulty}</Text>
+                </Text>
+              </View>
+            )}
+            {info.target && (
+              <View style={styles.tagChip}>
+                <Text style={styles.tagText}>
+                  Target: <Text style={styles.tagHighlight}>{info.target}</Text>
+                </Text>
+              </View>
+            )}
+          </View>
+        </Animated.View>
+
+        {/* Compact card that slides in next to the shrunk hero */}
+        <Animated.View
+          style={[
+            styles.compactCard,
+            {
+              opacity: compactCardOpacity,
+              transform: [{ translateX: compactCardTranslateX }],
+            },
+          ]}
+          pointerEvents="none"
+        >
+          <Text style={styles.compactTitle} numberOfLines={1}>
+            {info.name}
+          </Text>
+          <Text style={styles.compactSubtitle} numberOfLines={1}>
+            {[info.category, info.difficulty, info.target]
+              .filter(Boolean)
+              .join(" • ")}
+          </Text>
+        </Animated.View>
+        {/* Compact card that slides in next to the shrunk hero */}
+        <Animated.View
+          style={[
+            styles.compactCard1,
+            {
+              opacity: compactCardOpacity,
+              transform: [{ translateX: compactCardTranslateY }],
+            },
+          ]}
+          pointerEvents="none"
+        ></Animated.View>
+
+        {/* Scrollable content: equipment, description, instructions */}
+        <Animated.ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: scrollContentTopPadding },
+          ]}
+          scrollEventThrottle={16}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false },
+          )}
+        >
           <View style={styles.contentStack}>
-            <Text style={styles.pageTitle}>{info.name}</Text>
-
-            <View style={styles.tagRow}>
-              {info.category && (
-                <View style={styles.tagChip}>
-                  <Text style={styles.tagText}>
-                    Category: <Text style={styles.tagHighlight}>{info.category}</Text>
-                  </Text>
-                </View>
-              )}
-              {info.difficulty && (
-                <View style={styles.tagChip}>
-                  <Text style={styles.tagText}>
-                    Difficulty:{" "}
-                    <Text style={styles.tagHighlight}>{info.difficulty}</Text>
-                  </Text>
-                </View>
-              )}
-              {info.target && (
-                <View style={styles.tagChip}>
-                  <Text style={styles.tagText}>
-                    Target: <Text style={styles.tagHighlight}>{info.target}</Text>
-                  </Text>
-                </View>
-              )}
-            </View>
-
             {info.equipment && (
               <View style={styles.infoCard}>
                 <Text style={styles.infoTitle}>Equipment Needed</Text>
@@ -353,7 +581,7 @@ const ExerciseDetailsScreen = () => {
               </View>
             )}
           </View>
-        </ScrollView>
+        </Animated.ScrollView>
       </View>
     </SafeAreaView>
   );

@@ -18,12 +18,12 @@ const SplashScreen = () => {
       if (session) {
         router.replace("/TabNavigation/HomeScreen");
       } else {
-        router.replace("./LoginScreen");
+        router.replace("/Screen/Auth/LoginScreen");
       }
     }, 1600);
 
     return () => clearTimeout(timer);
-  }, [session, initialized]);
+  }, [router, session, initialized]);
 
   return (
     <View style={{ flex: 1, backgroundColor: "#030303" }}>

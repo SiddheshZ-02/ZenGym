@@ -70,12 +70,14 @@ const useStyles = createThemedStyles((_, responsive) => {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
+      backgroundColor: "#000",
     },
     emptyState: {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
       paddingHorizontal: spacing.xl,
+      backgroundColor: "#000",
     },
     emptyTitle: {
       fontSize: fontSizes.lg,
