@@ -1,6 +1,8 @@
-import { supabase } from "@/service/SupabaseClient";
+import { supabase } from "@/services/supabaseClient";
 import { create } from "zustand";
-import { useAuthStore } from "./AuthStore";
+
+// Lazy import to avoid require cycle
+const getAuthStore = () => require("./authStore").useAuthStore;
 
 export interface BodyPartType {
   id: number;
@@ -122,7 +124,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   },
 
   fetchWorkoutList: async () => {
-    const user = useAuthStore.getState().user;
+    const user = getAuthStore().getState().user;
     if (!user) {
       set({ workoutList: [] });
       return;
@@ -132,7 +134,8 @@ export const useDataStore = create<DataState>((set, get) => ({
     try {
       const { data, error } = await supabase
         .from("user_workouts")
-        .select(`
+        .select(
+          `
           exercise_id,
           exercises!inner (
             id,
@@ -146,7 +149,8 @@ export const useDataStore = create<DataState>((set, get) => ({
             instructions,
             body_part
           )
-        `)
+        `,
+        )
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -161,7 +165,9 @@ export const useDataStore = create<DataState>((set, get) => ({
         equipment: item.exercises.equipment || "",
         description: item.exercises.description || "",
         target: item.exercises.target || "",
-        instructions: Array.isArray(item.exercises.instructions) ? item.exercises.instructions : [],
+        instructions: Array.isArray(item.exercises.instructions)
+          ? item.exercises.instructions
+          : [],
         bodyPart: item.exercises.body_part || "",
       }));
 
@@ -173,16 +179,14 @@ export const useDataStore = create<DataState>((set, get) => ({
   },
 
   addExerciseToWorkout: async (exercise: ExerciseType) => {
-    const user = useAuthStore.getState().user;
+    const user = getAuthStore().getState().user;
     if (!user) return;
 
     try {
-      const { error } = await supabase
-        .from("user_workouts")
-        .insert({
-          user_id: user.id,
-          exercise_id: exercise.id,
-        });
+      const { error } = await supabase.from("user_workouts").insert({
+        user_id: user.id,
+        exercise_id: exercise.id,
+      });
 
       if (error) throw error;
       await get().fetchWorkoutList();
@@ -192,7 +196,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   },
 
   removeExerciseFromWorkout: async (exerciseId: number) => {
-    const user = useAuthStore.getState().user;
+    const user = getAuthStore().getState().user;
     if (!user) return;
 
     try {

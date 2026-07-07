@@ -1,9 +1,11 @@
-import { supabase } from "@/service/SupabaseClient";
+import { supabase } from "@/services/supabaseClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthError, Session, User } from "@supabase/supabase-js";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { useDataStore } from "./DataStore";
+
+// Lazy import to avoid require cycle
+const getDataStore = () => require("./dataStore").useDataStore;
 
 interface AuthState {
   session: Session | null;
@@ -38,7 +40,7 @@ export const useAuthStore = create<AuthState>()(
         supabase.auth.getSession().then(({ data: { session } }) => {
           set({ session, user: session?.user ?? null, initialized: true });
           if (session?.user) {
-            useDataStore.getState().fetchWorkoutList();
+            getDataStore().getState().fetchWorkoutList();
           }
         });
 
@@ -48,9 +50,9 @@ export const useAuthStore = create<AuthState>()(
         } = supabase.auth.onAuthStateChange((_event, session) => {
           set({ session, user: session?.user ?? null, initialized: true });
           if (session?.user) {
-            useDataStore.getState().fetchWorkoutList();
+            getDataStore().getState().fetchWorkoutList();
           } else {
-            useDataStore.setState({ workoutList: [] });
+            getDataStore().setState({ workoutList: [] });
           }
         });
 

@@ -1,9 +1,11 @@
-import { useAuthStore } from "@/store/AuthStore";
+import { useAuthStore } from "@/store/authStore";
+import { AppSystemProvider } from "@/constants/responsive";
 import { Stack } from "expo-router";
 import React, { useEffect } from "react";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
-const RootLayout = () => {
+const App = () => {
   const { initializeAuth } = useAuthStore();
 
   useEffect(() => {
@@ -11,16 +13,20 @@ const RootLayout = () => {
   }, [initializeAuth]);
 
   return (
-    <>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="login" />
-        <Stack.Screen name="signup" />
-        <Stack.Screen name="(tabbar)" />
-      </Stack>
-      <Toast />
-    </>
+    <SafeAreaProvider>
+      <AppSystemProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="Screen/Auth/LoginScreen" />
+          <Stack.Screen name="Screen/Auth/SignupScreen" />
+          <Stack.Screen name="TabNavigation" />
+          <Stack.Screen name="Screen/BodyPart/BodyPartScreen" />
+          <Stack.Screen name="Screen/ExerciseDetails/ExerciseDetailsScreen" />
+        </Stack>
+        <Toast />
+      </AppSystemProvider>
+    </SafeAreaProvider>
   );
 };
 
-export default RootLayout;
+export default App;
