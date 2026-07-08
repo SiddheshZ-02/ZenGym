@@ -40,6 +40,13 @@
           "resizeMode": "contain",
           "backgroundColor": "#000000"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow ZenGym to access your photos for your profile picture.",
+          "cameraPermission": "Allow ZenGym to use the camera for your profile picture."
+        }
       ]
     ],
     "experiments": {

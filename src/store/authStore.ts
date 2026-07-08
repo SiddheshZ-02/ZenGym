@@ -6,6 +6,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 // Lazy import to avoid require cycle
 const getDataStore = () => require("./dataStore").useDataStore;
+const getProfileStore = () => require("./profileStore").useProfileStore;
 
 interface AuthState {
   session: Session | null;
@@ -42,6 +43,7 @@ export const useAuthStore = create<AuthState>()(
             set({ session, user: session?.user ?? null, initialized: true });
             if (session?.user) {
               getDataStore().getState().fetchWorkoutList();
+              getProfileStore().getState().fetchProfile();
             }
           })
           .catch((error) => {
@@ -55,8 +57,10 @@ export const useAuthStore = create<AuthState>()(
           set({ session, user: session?.user ?? null, initialized: true });
           if (session?.user) {
             getDataStore().getState().fetchWorkoutList();
+            getProfileStore().getState().fetchProfile();
           } else {
             getDataStore().setState({ workoutList: [] });
+            getProfileStore().getState().clearProfile();
           }
         });
 
@@ -101,6 +105,7 @@ export const useAuthStore = create<AuthState>()(
             set({ error: error.message });
           }
           set({ session: null, user: null });
+          getProfileStore().getState().clearProfile();
         } catch (error) {
           console.error("Sign out error:", error);
         } finally {

@@ -123,14 +123,11 @@ const useStyles = createThemedStyles((_, responsive) => {
       backgroundColor: "#1a1a1a",
     },
 
-    // Big centered title block (fades out on scroll)
-    expandedInfoWrap: {
-      position: "absolute",
-      left: 0,
-      right: 0,
-      zIndex: 15,
+    // Title + tags inside ScrollView — scroll with the page
+    expandedInfoInScroll: {
       alignItems: "center",
       paddingHorizontal: spacing.md,
+      marginBottom: spacing.md,
     },
     pageTitle: {
       fontSize: fontSizes.xxl,
@@ -360,28 +357,6 @@ const ExerciseDetailsScreen = () => {
     extrapolate: "clamp",
   });
 
-  // Big centered title/tags block: fades + shifts up, disappears early
-  const expandedInfoTop = scrollY.interpolate({
-    inputRange: [0, COLLAPSE_RANGE],
-    outputRange: [
-      100 + (SCREEN_WIDTH - 32) + 16,
-      100 + (SCREEN_WIDTH - 32) + 16,
-    ],
-    extrapolate: "clamp",
-  });
-
-  const expandedInfoOpacity = scrollY.interpolate({
-    inputRange: [0, COLLAPSE_RANGE * 0.4, COLLAPSE_RANGE * 0.7],
-    outputRange: [1, 1, 0],
-    extrapolate: "clamp",
-  });
-
-  const expandedInfoTranslateY = scrollY.interpolate({
-    inputRange: [0, COLLAPSE_RANGE],
-    outputRange: [0, -30],
-    extrapolate: "clamp",
-  });
-
   // Compact card (name/category/difficulty/target) next to the shrunk image
   const compactCardOpacity = scrollY.interpolate({
     inputRange: [COLLAPSE_RANGE * 0.5, COLLAPSE_RANGE],
@@ -401,8 +376,8 @@ const ExerciseDetailsScreen = () => {
   });
 
   // How much top padding the scroll content needs so it starts right
-  // below the fully expanded hero + title block.
-  const scrollContentTopPadding = 100 + (SCREEN_WIDTH - 32) + 16 + 10; // hero top offset + hero height + gap + title block estimate
+  // below the fully expanded hero (title/tags are inside scroll content).
+  const scrollContentTopPadding = 100 + (SCREEN_WIDTH - 32) -100;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -469,46 +444,6 @@ const ExerciseDetailsScreen = () => {
           />
         </Animated.View>
 
-        {/* Big centered title/tags — fades out as you scroll */}
-        <Animated.View
-          style={[
-            styles.expandedInfoWrap,
-            {
-              top: expandedInfoTop,
-              opacity: expandedInfoOpacity,
-              transform: [{ translateY: expandedInfoTranslateY }],
-            },
-          ]}
-          pointerEvents="none"
-        >
-          <Text style={styles.pageTitle}>{info.name}</Text>
-          <View style={styles.tagRow}>
-            {info.category && (
-              <View style={styles.tagChip}>
-                <Text style={styles.tagText}>
-                  Category:{" "}
-                  <Text style={styles.tagHighlight}>{info.category}</Text>
-                </Text>
-              </View>
-            )}
-            {info.difficulty && (
-              <View style={styles.tagChip}>
-                <Text style={styles.tagText}>
-                  Difficulty:{" "}
-                  <Text style={styles.tagHighlight}>{info.difficulty}</Text>
-                </Text>
-              </View>
-            )}
-            {info.target && (
-              <View style={styles.tagChip}>
-                <Text style={styles.tagText}>
-                  Target: <Text style={styles.tagHighlight}>{info.target}</Text>
-                </Text>
-              </View>
-            )}
-          </View>
-        </Animated.View>
-
         {/* Compact card that slides in next to the shrunk hero */}
         <Animated.View
           style={[
@@ -541,7 +476,7 @@ const ExerciseDetailsScreen = () => {
           pointerEvents="none"
         ></Animated.View>
 
-        {/* Scrollable content: equipment, description, instructions */}
+        {/* Scrollable content: info, equipment, description, instructions */}
         <Animated.ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={[
@@ -555,6 +490,36 @@ const ExerciseDetailsScreen = () => {
           )}
         >
           <View style={styles.contentStack}>
+            <View style={styles.expandedInfoInScroll}>
+              <Text style={styles.pageTitle}>{info.name}</Text>
+              <View style={styles.tagRow}>
+                {info.category && (
+                  <View style={styles.tagChip}>
+                    <Text style={styles.tagText}>
+                      Category:{" "}
+                      <Text style={styles.tagHighlight}>{info.category}</Text>
+                    </Text>
+                  </View>
+                )}
+                {info.difficulty && (
+                  <View style={styles.tagChip}>
+                    <Text style={styles.tagText}>
+                      Difficulty:{" "}
+                      <Text style={styles.tagHighlight}>{info.difficulty}</Text>
+                    </Text>
+                  </View>
+                )}
+                {info.target && (
+                  <View style={styles.tagChip}>
+                    <Text style={styles.tagText}>
+                      Target:{" "}
+                      <Text style={styles.tagHighlight}>{info.target}</Text>
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+
             {info.equipment && (
               <View style={styles.infoCard}>
                 <Text style={styles.infoTitle}>Equipment Needed</Text>
@@ -565,7 +530,9 @@ const ExerciseDetailsScreen = () => {
             {info.description && (
               <View style={styles.infoCard}>
                 <Text style={styles.infoTitle}>Description</Text>
-                <Text style={styles.infoBody}>{info.description}</Text>
+                <Text style={styles.infoBody}>{info.description}
+                  Lorem ipsum dolor sit amet, consectetur adipisicing elit. Quae id earum est porro quaerat aut non suscipit recusandae cum, sint explicabo quia magni voluptatibus quod iure perferendis. Consequatur quaerat inventore dolores vel, cumque aliquid, quis exercitationem saepe nemo quae qui eveniet provident quo deserunt porro aliquam nesciunt? Dicta architecto facilis harum alias magnam minus iusto porro praesentium. Magnam itaque ipsam laborum veniam. Quod, itaque! Nostrum cumque animi quis unde. Sapiente, ipsam. Harum, qui? Asperiores, cumque ex eaque blanditiis ratione tenetur dolorem odio omnis eius assumenda nemo sit inventore nisi, neque quod aut voluptatem consequuntur doloribus. Expedita sit impedit repellat nostrum corporis soluta nobis nam, beatae voluptas perferendis amet natus molestiae fugit et ipsam debitis, id aliquam aut modi pariatur eveniet. Iure, veritatis quis assumenda unde fuga deleniti hic, maiores quas iste illum, nisi eaque dolorum nemo reiciendis praesentium rerum omnis natus tempore doloribus! Facilis architecto autem at libero maxime, praesentium tenetur officia ab perferendis quae aspernatur, sequi pariatur, molestias eveniet quos repudiandae recusandae illo quidem rerum. Nesciunt architecto quisquam assumenda! Excepturi quibusdam ea, saepe aperiam porro recusandae totam nemo laboriosam modi. Porro neque similique voluptatem aperiam maiores necessitatibus quos dignissimos ab officiis quae culpa ut facilis, quidem nostrum fugiat tempora nihil. Libero quia impedit vel saepe iusto nulla voluptatum, iure consectetur culpa voluptas temporibus doloremque, ipsam recusandae numquam error atque suscipit laboriosam porro? Labore doloribus quia velit odio rerum, similique at, fuga nobis quas laboriosam, corrupti soluta incidunt enim odit dolorum quibusdam! Quidem ab, autem explicabo voluptates, dolorum officiis rerum asperiores quia recusandae laborum molestiae enim sit laudantium. Ipsum soluta ad harum eveniet. Et sit in praesentium officia aut, eius nemo aliquid ea aspernatur, enim dignissimos consequuntur cupiditate laborum repudiandae numquam eligendi dolorem ad mollitia illo natus blanditiis atque maxime. Quis aut atque, perferendis temporibus suscipit quas non nisi. Quos fugiat et molestias reprehenderit provident excepturi vel odit deserunt, cumque pariatur sit similique, quisquam laboriosam eum accusantium totam architecto perspiciatis atque velit. Repellat, maiores iusto. Dicta molestias non voluptatem iusto, reiciendis quo, at enim tempore vel animi ipsum provident vero eveniet illum temporibus illo nemo, obcaecati quidem voluptatum fuga laudantium? Id, possimus error. Aperiam molestiae id iusto voluptatum dicta aspernatur libero, placeat odit quaerat. Cum laudantium minima sunt, magnam nostrum modi! Earum nemo accusamus aliquid voluptatibus quo enim saepe, ea accusantium molestiae, nihil praesentium suscipit optio, sint neque ullam fugiat dolores iure at velit. Cumque explicabo, voluptas obcaecati totam modi animi, quae tempore aspernatur neque debitis deleniti, at possimus. Aliquid qui amet iste velit asperiores vero labore fugiat possimus laboriosam perferendis obcaecati debitis, molestias vel consectetur iusto quibusdam nam quia non deserunt et dicta, blanditiis, nulla sed. Quasi eaque quibusdam porro? Voluptatem laborum recusandae debitis, maiores error est delectus at itaque iste magni non eos adipisci, impedit dolorem vel pariatur asperiores perspiciatis facilis corporis harum. Minus magni ullam dolor inventore tenetur aliquid vero quam, totam cumque, quis repellendus corporis cum facilis! Voluptates voluptatem, optio dicta praesentium, natus recusandae ipsa enim dolor, porro minus excepturi consectetur saepe odio facilis in deserunt.
+                </Text>
               </View>
             )}
 

@@ -2,6 +2,7 @@ import { createThemedStyles } from "@/constants/responsive";
 import { useAuthStore } from "@/store/authStore";
 import { useDataStore } from "@/store/dataStore";
 import { showToast } from "@/utils/toast";
+import { Entypo, MaterialIcons } from "@expo/vector-icons";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { LegendList } from "@legendapp/list";
 import { Image } from "expo-image";
@@ -206,7 +207,7 @@ const WorkoutListsScreen = () => {
         style={styles.deleteButton}
         onPress={() => removeWorkout(item.id)}
       >
-        <AntDesign name="delete" size={24} color="#FF4444" />
+        <MaterialIcons name="delete-outline" size={24} color="#FF4444" />
       </TouchableOpacity>
     </TouchableOpacity>
   );

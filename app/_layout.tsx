@@ -22,6 +22,7 @@ const App = () => {
           <Stack.Screen name="TabNavigation" />
           <Stack.Screen name="Screen/BodyPart/BodyPartScreen" />
           <Stack.Screen name="Screen/ExerciseDetails/ExerciseDetailsScreen" />
+          <Stack.Screen name="Screen/Profile/ProfileScreen" />
         </Stack>
         <Toast />
       </AppSystemProvider>
