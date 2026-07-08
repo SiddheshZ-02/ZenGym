@@ -13,7 +13,7 @@ interface AuthState {
   loading: boolean;
   error: string | null;
   initialized: boolean;
-  initializeAuth: () => void;
+  initializeAuth: () => () => void;
   signUp: (
     email: string,
     password: string,
@@ -36,15 +36,19 @@ export const useAuthStore = create<AuthState>()(
       initialized: false,
 
       initializeAuth: () => {
-        // Check for existing session on app start
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          set({ session, user: session?.user ?? null, initialized: true });
-          if (session?.user) {
-            getDataStore().getState().fetchWorkoutList();
-          }
-        });
+        supabase.auth
+          .getSession()
+          .then(({ data: { session } }) => {
+            set({ session, user: session?.user ?? null, initialized: true });
+            if (session?.user) {
+              getDataStore().getState().fetchWorkoutList();
+            }
+          })
+          .catch((error) => {
+            console.error("Auth initialization error:", error);
+            set({ initialized: true });
+          });
 
-        // Listen for auth state changes
         const {
           data: { subscription },
         } = supabase.auth.onAuthStateChange((_event, session) => {

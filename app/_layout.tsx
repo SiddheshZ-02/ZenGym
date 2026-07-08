@@ -9,7 +9,7 @@ const App = () => {
   const { initializeAuth } = useAuthStore();
 
   useEffect(() => {
-    initializeAuth();
+    return initializeAuth();
   }, [initializeAuth]);
 
   return (
