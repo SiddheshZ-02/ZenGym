@@ -2,12 +2,12 @@ import { createThemedStyles } from "@/constants/responsive";
 import { ExerciseType, useDataStore } from "@/store/dataStore";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { Entypo, Feather } from "@expo/vector-icons";
-import { LegendList } from "@legendapp/list";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  FlatList,
   StatusBar,
   StyleSheet,
   Text,
@@ -236,9 +236,8 @@ const BodyPartScreen = () => {
         </View>
 
         <View style={styles.listContainer}>
-          <LegendList
+          <FlatList
             data={filteredParts}
-            recycleItems
             contentContainerStyle={styles.listContent}
             keyExtractor={(item) => item.id.toString()}
             showsVerticalScrollIndicator={false}

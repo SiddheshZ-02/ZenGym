@@ -4,12 +4,12 @@ import { useDataStore } from "@/store/dataStore";
 import { showToast } from "@/utils/toast";
 import { Entypo, MaterialIcons } from "@expo/vector-icons";
 import AntDesign from "@expo/vector-icons/AntDesign";
-import { LegendList } from "@legendapp/list";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
   ActivityIndicator,
+  FlatList,
   StatusBar,
   StyleSheet,
   Text,
@@ -244,10 +244,9 @@ const WorkoutListsScreen = () => {
             </Text>
           </View>
         ) : (
-          <LegendList
+          <FlatList
             data={workoutList}
             renderItem={renderWorkoutItem}
-            recycleItems
             keyExtractor={(item) => item.id.toString()}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listContent}

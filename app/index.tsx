@@ -1,12 +1,5 @@
-import { useEffect } from "react";
-import { useRouter } from "expo-router";
+import { Redirect } from "expo-router";
 
 export default function Index() {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace("/Screen/Auth");
-  }, [router]);
-
-  return null;
+  return <Redirect href="/Screen/Auth" />;
 }

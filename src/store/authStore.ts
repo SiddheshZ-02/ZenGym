@@ -37,35 +37,49 @@ export const useAuthStore = create<AuthState>()(
       initialized: false,
 
       initializeAuth: () => {
-        supabase.auth
-          .getSession()
-          .then(({ data: { session } }) => {
-            set({ session, user: session?.user ?? null, initialized: true });
-            if (session?.user) {
-              getDataStore().getState().fetchWorkoutList();
-              getProfileStore().getState().fetchProfile();
-            }
-          })
-          .catch((error) => {
-            console.error("Auth initialization error:", error);
-            set({ initialized: true });
-          });
-
-        const {
-          data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event, session) => {
-          set({ session, user: session?.user ?? null, initialized: true });
-          if (session?.user) {
+    // Initialize auth safely
+    const init = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        set({ session, user: session?.user ?? null, initialized: true });
+        if (session?.user) {
+          try {
             getDataStore().getState().fetchWorkoutList();
             getProfileStore().getState().fetchProfile();
-          } else {
-            getDataStore().setState({ workoutList: [] });
-            getProfileStore().getState().clearProfile();
+          } catch (e) {
+            console.error("Error initializing data/profile:", e);
           }
-        });
+        }
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+        set({ initialized: true });
+      }
+    };
+    init();
 
-        return () => subscription.unsubscribe();
-      },
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      set({ session, user: session?.user ?? null, initialized: true });
+      if (session?.user) {
+        try {
+          getDataStore().getState().fetchWorkoutList();
+          getProfileStore().getState().fetchProfile();
+        } catch (e) {
+          console.error("Error in auth state change:", e);
+        }
+      } else {
+        try {
+          getDataStore().setState({ workoutList: [] });
+          getProfileStore().getState().clearProfile();
+        } catch (e) {
+          console.error("Error clearing data:", e);
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  },
 
       signUp: async (email: string, password: string) => {
         set({ loading: true, error: null });

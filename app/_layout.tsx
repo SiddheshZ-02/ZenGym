@@ -1,9 +1,80 @@
 import { useAuthStore } from "@/store/authStore";
 import { AppSystemProvider } from "@/constants/responsive";
 import { Stack } from "expo-router";
-import React, { useEffect } from "react";
+import React, { useEffect, Component, ReactNode } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "react-native";
+
+// Root Error Boundary
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, error: Error | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("Root Error Boundary caught an error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={errorStyles.container}>
+          <Text style={errorStyles.title}>Oops! Something went wrong.</Text>
+          <Text style={errorStyles.message}>
+            {this.state.error?.message || "An unexpected error occurred."}
+          </Text>
+          <TouchableOpacity
+            style={errorStyles.button}
+            onPress={() => this.setState({ hasError: false, error: null })}
+          >
+            <Text style={errorStyles.buttonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const errorStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#000",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 16,
+  },
+  message: {
+    fontSize: 16,
+    color: "#999",
+    textAlign: "center",
+    marginBottom: 24,
+  },
+  button: {
+    backgroundColor: "#32CD32",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: "#000",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+});
 
 const App = () => {
   const { initializeAuth } = useAuthStore();
@@ -13,20 +84,22 @@ const App = () => {
   }, [initializeAuth]);
 
   return (
-    <SafeAreaProvider>
-      <AppSystemProvider>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="Screen/Auth/index" />
-          <Stack.Screen name="Screen/Auth/LoginScreen" />
-          <Stack.Screen name="Screen/Auth/SignupScreen" />
-          <Stack.Screen name="TabNavigation" />
-          <Stack.Screen name="Screen/BodyPart/BodyPartScreen" />
-          <Stack.Screen name="Screen/ExerciseDetails/ExerciseDetailsScreen" />
-          <Stack.Screen name="Screen/Profile/ProfileScreen" />
-        </Stack>
-        <Toast />
-      </AppSystemProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <AppSystemProvider>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="Screen/Auth/index" />
+            <Stack.Screen name="Screen/Auth/LoginScreen" />
+            <Stack.Screen name="Screen/Auth/SignupScreen" />
+            <Stack.Screen name="TabNavigation" />
+            <Stack.Screen name="Screen/BodyPart/BodyPartScreen" />
+            <Stack.Screen name="Screen/ExerciseDetails/ExerciseDetailsScreen" />
+            <Stack.Screen name="Screen/Profile/ProfileScreen" />
+          </Stack>
+          <Toast />
+        </AppSystemProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 };
 

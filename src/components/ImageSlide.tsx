@@ -1,8 +1,7 @@
 import { createThemedStyles } from "@/constants/responsive";
 import { supabase } from "@/services/supabaseClient";
-import { LegendList } from "@legendapp/list";
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Image, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Image, StyleSheet, View , FlatList,} from "react-native";
 
 interface SlideItem {
   id: number;
@@ -118,14 +117,13 @@ const ImageSlide = () => {
 
   return (
     <View style={styles.shell}>
-      <LegendList
+      <FlatList
         data={slides}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={{ gap: 20 }}
         horizontal
         pagingEnabled
         ref={listRef}
-        recycleItems
         showsHorizontalScrollIndicator={false}
         renderItem={({ item }) => (
           <View style={styles.slideWrap}>
