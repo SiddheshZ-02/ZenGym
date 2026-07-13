@@ -43,26 +43,10 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         .from("profiles")
         .select("id, user_id, username, avatar_url, created_at")
         .eq("user_id", user.id)
-        .maybeSingle();
+        .single(); // Profile is guaranteed to exist by Supabase trigger
 
       if (error) throw error;
-
-      if (data) {
-        set({ profile: data, loading: false });
-        return;
-      }
-
-      const defaultUsername =
-        user.email?.split("@")[0] ?? `user_${user.id.slice(0, 8)}`;
-
-      const { data: newProfile, error: insertError } = await supabase
-        .from("profiles")
-        .insert({ user_id: user.id, username: defaultUsername })
-        .select("id, user_id, username, avatar_url, created_at")
-        .single();
-
-      if (insertError) throw insertError;
-      set({ profile: newProfile, loading: false });
+      set({ profile: data, loading: false });
     } catch (error: any) {
       console.error("Error fetching profile:", error);
       set({ error: error.message, loading: false });
