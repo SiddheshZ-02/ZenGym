@@ -5,21 +5,28 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 const useStyles = createThemedStyles((_, responsive) => {
-  const { spacing, radius, fontSizes, ms, wp, containerMaxWidth, isSmallPhone } =
-    responsive;
+  const {
+    spacing,
+    radius,
+    fontSizes,
+    ms,
+    wp,
+    containerMaxWidth,
+    isSmallPhone,
+  } = responsive;
 
   const logoSize = isSmallPhone ? wp(84) : wp(100);
 
@@ -98,6 +105,36 @@ const useStyles = createThemedStyles((_, responsive) => {
       fontSize: fontSizes.lg,
       fontWeight: "600",
     },
+    googleButton: {
+      backgroundColor: "#fff",
+      borderRadius: radius.md,
+      paddingVertical: ms(18),
+      alignItems: "center",
+      marginTop: spacing.md,
+      flexDirection: "row",
+      justifyContent: "center",
+    },
+    googleButtonText: {
+      color: "#333",
+      fontSize: fontSizes.lg,
+      fontWeight: "600",
+      marginLeft: spacing.sm,
+    },
+    dividerContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginVertical: spacing.md,
+    },
+    divider: {
+      flex: 1,
+      height: 1,
+      backgroundColor: "#333",
+    },
+    dividerText: {
+      color: "#888",
+      marginHorizontal: spacing.md,
+      fontSize: fontSizes.sm,
+    },
     signupContainer: {
       flexDirection: "row",
       justifyContent: "center",
@@ -121,7 +158,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-  const { signIn, loading } = useAuthStore();
+  const { signIn, signInWithGoogle, loading } = useAuthStore();
   const styles = useStyles();
 
   const handleLogin = async () => {
@@ -139,6 +176,16 @@ export default function LoginScreen() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    const { error } = await signInWithGoogle();
+    if (!error) {
+      showToast("success", "Logged in with Google successfully!");
+      router.replace("/TabNavigation/HomeScreen");
+    } else {
+      showToast("error", error.message);
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -149,7 +196,10 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.content}>
-          <Image source={require("@assets/images/ZG.png")} style={styles.logo} />
+          <Image
+            source={require("@assets/images/ZG.png")}
+            style={styles.logo}
+          />
           <Text style={styles.title}>ZenGym</Text>
           <Text style={styles.subtitle}>Sign in to continue</Text>
 
@@ -193,6 +243,27 @@ export default function LoginScreen() {
               <ActivityIndicator color="#32CD32" />
             ) : (
               <Text style={styles.buttonText}>Sign In</Text>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.dividerContainer}>
+            <View style={styles.divider} />
+            <Text style={styles.dividerText}>or continue with</Text>
+            <View style={styles.divider} />
+          </View>
+
+          <TouchableOpacity
+            style={styles.googleButton}
+            onPress={handleGoogleSignIn}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#333" />
+            ) : (
+              <>
+                <Ionicons name="logo-google" size={24} color="#333" />
+                <Text style={styles.googleButtonText}>Sign In with Google</Text>
+              </>
             )}
           </TouchableOpacity>
 

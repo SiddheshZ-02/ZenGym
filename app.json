@@ -47,7 +47,8 @@
           "photosPermission": "Allow ZenGym to access your photos for your profile picture.",
           "cameraPermission": "Allow ZenGym to use the camera for your profile picture."
         }
-      ]
+      ],
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true
