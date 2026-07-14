@@ -41,6 +41,7 @@ export interface WorkoutExerciseType {
   target: string;
   instructions: string[];
   bodyPart: string;
+  dayOfWeek?: string;
 }
 
 interface DataState {
@@ -54,8 +55,9 @@ interface DataState {
   fetchExercises: (bodyPart?: string) => Promise<void>;
   fetchExerciseById: (id: number) => Promise<ExerciseType | null>;
   fetchWorkoutList: () => Promise<void>;
-  addExerciseToWorkout: (exercise: ExerciseType) => Promise<void>;
+  addExerciseToWorkout: (exercise: ExerciseType, dayOfWeek?: string) => Promise<void>;
   removeExerciseFromWorkout: (exerciseId: number) => Promise<void>;
+  setExerciseDay: (exerciseId: number, dayOfWeek: string) => Promise<void>;
 }
 
 export const useDataStore = create<DataState>((set, get) => ({
@@ -150,6 +152,7 @@ export const useDataStore = create<DataState>((set, get) => ({
         .select(
           `
           exercise_id,
+          day_of_week,
           exercises!inner (
             id,
             name,
@@ -182,6 +185,7 @@ export const useDataStore = create<DataState>((set, get) => ({
           ? item.exercises.instructions
           : [],
         bodyPart: item.exercises.body_part || "",
+        dayOfWeek: item.day_of_week,
       }));
 
       set({ workoutList: mappedData, workoutLoading: false });
@@ -195,7 +199,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     }
   },
 
-  addExerciseToWorkout: async (exercise: ExerciseType) => {
+  addExerciseToWorkout: async (exercise: ExerciseType, dayOfWeek?: string) => {
     const user = getAuthStore().getState().user;
     if (!user) return;
 
@@ -203,6 +207,7 @@ export const useDataStore = create<DataState>((set, get) => ({
       const { error } = await supabase.from("user_workouts").insert({
         user_id: user.id,
         exercise_id: exercise.id,
+        day_of_week: dayOfWeek || null,
       });
 
       if (error) throw error;
@@ -212,6 +217,28 @@ export const useDataStore = create<DataState>((set, get) => ({
       Alert.alert(
         "Network Error",
         "Failed to add exercise to workout. Please check your internet connection.",
+      );
+    }
+  },
+
+  setExerciseDay: async (exerciseId: number, dayOfWeek: string) => {
+    const user = getAuthStore().getState().user;
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from("user_workouts")
+        .update({ day_of_week: dayOfWeek })
+        .eq("user_id", user.id)
+        .eq("exercise_id", exerciseId);
+
+      if (error) throw error;
+      await get().fetchWorkoutList();
+    } catch (error) {
+      console.error("Error setting exercise day:", error);
+      Alert.alert(
+        "Network Error",
+        "Failed to update workout day. Please check your internet connection.",
       );
     }
   },

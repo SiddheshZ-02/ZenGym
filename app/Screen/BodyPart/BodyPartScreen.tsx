@@ -179,13 +179,30 @@ const BodyPartScreen = () => {
     setFilteredParts(exercises);
   }, [exercises]);
 
+  // Sort order: Beginner first, then Intermediate, then Advanced
+  const getDifficultyOrder = (difficulty?: string) => {
+    switch (difficulty?.toLowerCase()) {
+      case 'beginner': return 1;
+      case 'intermediate': return 2;
+      case 'advanced': return 3;
+      default: return 4; // Put unknown difficulties at the end
+    }
+  };
+
   useEffect(() => {
+    let sortedExercises = [...exercises];
+    
+    // Sort by difficulty
+    sortedExercises.sort((a, b) => {
+      return getDifficultyOrder(a.difficulty) - getDifficultyOrder(b.difficulty);
+    });
+
     if (searchText.trim() === "") {
-      setFilteredParts(exercises);
+      setFilteredParts(sortedExercises);
       return;
     }
 
-    const filtered = exercises.filter((item) => {
+    const filtered = sortedExercises.filter((item) => {
       const search = searchText.toLowerCase();
       const itemName = item.name || "";
       const itemBodyPart = item.body_part || "";
@@ -288,8 +305,8 @@ const BodyPartScreen = () => {
                   <Text style={styles.rowName} numberOfLines={2}>
                     {item.name}
                   </Text>
-                  {!!item.body_part && (
-                    <Text style={styles.rowBodyPart}>{item.body_part}</Text>
+                  {!!item.difficulty && (
+                    <Text style={styles.rowBodyPart}>{item.difficulty}</Text>
                   )}
                   {!!item.target && (
                     <Text style={styles.rowTarget}>Target: {item.target}</Text>

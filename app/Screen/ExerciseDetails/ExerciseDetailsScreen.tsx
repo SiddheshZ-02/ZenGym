@@ -1,7 +1,7 @@
 import { createThemedStyles } from "@/constants/responsive";
 import { ExerciseType, useDataStore } from "@/store/dataStore";
 import { showToast } from "@/utils/toast";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -15,6 +15,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -25,6 +26,16 @@ const HERO_HEIGHT = 360; // expanded hero image height
 const HERO_MIN_SIZE = 72; // collapsed hero image size (square, top-left)
 const HEADER_TOP = 50; // top offset for the collapsed header row
 const COLLAPSE_RANGE = HERO_HEIGHT - HERO_MIN_SIZE; // scroll distance over which collapse happens
+
+const DAYS_OF_WEEK = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
 
 const useStyles = createThemedStyles((_, responsive) => {
   const { spacing, radius, fontSizes, ms, containerMaxWidth, isSmallPhone } =
@@ -239,12 +250,55 @@ const useStyles = createThemedStyles((_, responsive) => {
       flex: 1,
       lineHeight: ms(24),
     },
+    modalContainer: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.7)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    modalContent: {
+      backgroundColor: "#1a1a1a",
+      borderRadius: radius.lg,
+      padding: spacing.xl,
+      width: "85%",
+      maxWidth: 400,
+    },
+    modalTitle: {
+      fontSize: fontSizes.xl,
+      fontWeight: "bold",
+      color: "#fff",
+      textAlign: "center",
+      marginBottom: spacing.lg,
+    },
+    dayButton: {
+      padding: spacing.md,
+      backgroundColor: "#2a2a2a",
+      borderRadius: radius.md,
+      marginBottom: spacing.sm,
+      alignItems: "center",
+    },
+    dayButtonText: {
+      fontSize: fontSizes.md,
+      color: "#fff",
+    },
+    closeModalButton: {
+      padding: spacing.md,
+      backgroundColor: "#444",
+      borderRadius: radius.md,
+      marginTop: spacing.md,
+      alignItems: "center",
+    },
+    closeModalButtonText: {
+      fontSize: fontSizes.md,
+      color: "#fff",
+    },
   });
 });
 
 const ExerciseDetailsScreen = () => {
   const [info, setInfo] = useState<ExerciseType | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const router = useRouter();
   const { exercisesDetails } = useLocalSearchParams();
@@ -289,7 +343,7 @@ const ExerciseDetailsScreen = () => {
     loadExercise();
   }, [exercisesDetails]);
 
-  const handleAddExercises = async () => {
+  const handleAddExercises = () => {
     if (!info) return;
 
     if (workoutList.some((item) => item.id === info.id)) {
@@ -297,8 +351,15 @@ const ExerciseDetailsScreen = () => {
       return;
     }
 
-    await addExerciseToWorkout(info);
-    showToast("success", "Exercise has been added successfully!");
+    setModalVisible(true);
+  };
+
+  const selectDayAndAdd = async (day: string) => {
+    if (!info) return;
+
+    await addExerciseToWorkout(info, day);
+    showToast("success", `Exercise added to ${day}!`);
+    setModalVisible(false);
   };
 
   const isExerciseInList = info
@@ -549,6 +610,35 @@ const ExerciseDetailsScreen = () => {
           </View>
         </Animated.ScrollView>
       </View>
+
+      {/* Day Picker Modal */}
+      <Modal
+        visible={modalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select a Day</Text>
+            {DAYS_OF_WEEK.map((day) => (
+              <TouchableOpacity
+                key={day}
+                style={styles.dayButton}
+                onPress={() => selectDayAndAdd(day)}
+              >
+                <Text style={styles.dayButtonText}>{day}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={styles.closeModalButton}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={styles.closeModalButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };

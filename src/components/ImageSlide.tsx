@@ -1,24 +1,35 @@
-import { createThemedStyles } from "@/constants/responsive";
+import {
+  createThemedStyles,
+  getResHeight,
+  getResWidth,
+} from "@/constants/responsive";
 import { supabase } from "@/services/supabaseClient";
+import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Image, StyleSheet, View , FlatList,} from "react-native";
+import {
+  ActivityIndicator,
+  Button,
+  FlatList,
+  Image,
+  Linking,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 interface SlideItem {
   id: number;
   source: { uri: string } | number;
+  linkUrl?: string;
 }
-
-const FALLBACK_SLIDES: SlideItem[] = [
-  { id: 1, source: require("@assets/images/slide1.jpg") },
-  { id: 2, source: require("@assets/images/slide2.png") },
-  { id: 3, source: require("@assets/images/slide3.png") },
-  { id: 4, source: require("@assets/images/slide4.jpg") },
-  { id: 5, source: require("@assets/images/slide5.jpg") },
-];
 
 const useStyles = createThemedStyles((_, responsive) => {
   const { spacing, radius, hp, SCREEN, containerMaxWidth } = responsive;
-  const slideWidth = Math.min(SCREEN.width - spacing.md * 2, containerMaxWidth ?? SCREEN.width - spacing.md * 2);
+  const slideWidth = Math.min(
+    SCREEN.width - spacing.md * 2,
+    containerMaxWidth ?? SCREEN.width - spacing.md * 2,
+  );
 
   return StyleSheet.create({
     shell: {
@@ -28,7 +39,7 @@ const useStyles = createThemedStyles((_, responsive) => {
       alignSelf: "center",
     },
     slideWrap: {
-      paddingVertical: spacing.sm,
+      // paddingVertical: spacing.sm,
       alignItems: "center",
     },
     slideImage: {
@@ -61,7 +72,7 @@ const ImageSlide = () => {
       try {
         const { data, error } = await supabase
           .from("carousel_slides")
-          .select("id, title, image_url, sort_order")
+          .select("id, title, image_url, sort_order, link_url")
           .eq("is_active", true)
           .order("sort_order", { ascending: true })
           .order("id", { ascending: true });
@@ -73,14 +84,14 @@ const ImageSlide = () => {
             data.map((slide) => ({
               id: slide.id,
               source: { uri: slide.image_url },
+              linkUrl: slide.link_url,
             })),
           );
         } else {
-          setSlides(FALLBACK_SLIDES);
+          console.error("Error fetching carousel slides:", error);
         }
       } catch (error) {
         console.error("Error fetching carousel slides:", error);
-        setSlides(FALLBACK_SLIDES);
       } finally {
         setLoading(false);
       }
@@ -95,7 +106,10 @@ const ImageSlide = () => {
     const interval = setInterval(() => {
       setActiveSlide((prev) => {
         const next = prev + 1 >= slides.length ? 0 : prev + 1;
-        (listRef.current as any)?.scrollToIndex({ index: next, animated: true });
+        (listRef.current as any)?.scrollToIndex({
+          index: next,
+          animated: true,
+        });
         return next;
       });
     }, 3000);
@@ -115,8 +129,45 @@ const ImageSlide = () => {
 
   if (!slides.length) return null;
 
+  const handleSlidePress = async (linkUrl?: string) => {
+    if (linkUrl) {
+      let cleanedUrl = linkUrl.replace(/`/g, "").trim();
+      if (
+        !cleanedUrl.startsWith("http://") &&
+        !cleanedUrl.startsWith("https://")
+      ) {
+        cleanedUrl = "https://" + cleanedUrl;
+      }
+      try {
+        await Linking.openURL(cleanedUrl);
+      } catch (error) {
+        console.error("Error opening URL:", error, cleanedUrl);
+      }
+    }
+  };
+
   return (
     <View style={styles.shell}>
+      <TouchableOpacity
+        style={{
+          flexDirection: "row",
+          justifyContent: "flex-end",
+          paddingVertical: getResHeight(10),
+        }}
+        onPress={() => router.push("/Screen/Products/ProductsScreen")}
+      >
+        <Text
+          style={{
+            color: "#32CD32",
+            fontSize: getResWidth(12),
+            fontWeight: "600",
+          }}
+        >
+          {" "}
+          View Products {">>"}{" "}
+        </Text>
+      </TouchableOpacity>
+
       <FlatList
         data={slides}
         keyExtractor={(item) => item.id.toString()}
@@ -127,7 +178,12 @@ const ImageSlide = () => {
         showsHorizontalScrollIndicator={false}
         renderItem={({ item }) => (
           <View style={styles.slideWrap}>
-            <Image source={item.source} style={styles.slideImage} />
+            <TouchableOpacity
+              onPress={() => handleSlidePress(item.linkUrl)}
+              style={styles.slideImage}
+            >
+              <Image source={item.source} style={styles.slideImage} />
+            </TouchableOpacity>
           </View>
         )}
       />
