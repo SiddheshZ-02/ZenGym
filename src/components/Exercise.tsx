@@ -1,12 +1,14 @@
 import {
   createThemedStyles,
+  getResHeight,
   useAdaptiveValue,
   useResponsive,
 } from "@/constants/responsive";
 import { useDataStore } from "@/store/dataStore";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { RefreshControl } from "react-native";
 import {
   ActivityIndicator,
   FlatList,
@@ -51,8 +53,8 @@ const useStyles = createThemedStyles((_, responsive) => {
     },
     gridContent: {
       gap: spacing.md,
-      paddingBottom: spacing.xxl,
-      
+      paddingBottom: getResHeight(65),
+    
     },
     bodyPartCard: {
       flex: 1,
@@ -60,12 +62,10 @@ const useStyles = createThemedStyles((_, responsive) => {
       borderRadius: radius.xl,
       overflow: "hidden",
       backgroundColor: "#1a1a1a",
-      
     },
     bodyPartImage: {
       ...StyleSheet.absoluteFillObject,
       backgroundColor: "#1a1a1a",
-      
     },
     bodyPartLabel: {
       position: "absolute",
@@ -86,7 +86,6 @@ const useStyles = createThemedStyles((_, responsive) => {
       flex: 1,
       margin: spacing.xs,
       minHeight: ms(170),
-      
     },
   });
 });
@@ -97,10 +96,17 @@ const Exercise = ({ ListHeaderComponent }: ExerciseProps) => {
   const styles = useStyles();
   const { SCREEN, containerMaxWidth } = useResponsive();
   const columns = useAdaptiveValue(2, 3);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchBodyParts();
   }, [fetchBodyParts]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchBodyParts();
+    setRefreshing(false);
+  };
 
   const handleBodyPart = (name: string) => {
     router.push({
@@ -145,8 +151,17 @@ const Exercise = ({ ListHeaderComponent }: ExerciseProps) => {
       data={bodyParts}
       contentContainerStyle={styles.gridContent}
       numColumns={columns}
+      showsVerticalScrollIndicator={false}
       keyExtractor={(item) => item.id.toString()}
       ListHeaderComponent={FlatListHeader}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={["#32CD32"]}
+          tintColor="#32CD32"
+        />
+      }
       renderItem={({ item }) => {
         const imageSource = item.image_url
           ? { uri: item.image_url }

@@ -16,6 +16,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const useStyles = createThemedStyles((_, responsive) => {
   const {
@@ -199,117 +200,119 @@ export default function SignupScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.container}
       >
-        <View style={styles.content}>
-          <Image
-            source={require("@assets/images/ZG.png")}
-            style={styles.logo}
-          />
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join ZenGym today</Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.content}>
+            <Image
+              source={require("@assets/images/ZG.png")}
+              style={styles.logo}
+            />
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>Join ZenGym today</Text>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            placeholderTextColor="#888"
-          />
-
-          <View style={styles.passwordContainer}>
             <TextInput
-              style={styles.passwordInput}
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
+              style={styles.input}
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
               placeholderTextColor="#888"
             />
-            <TouchableOpacity
-              onPress={() => setShowPassword(!showPassword)}
-              style={styles.eyeButton}
-            >
-              <Ionicons
-                name={showPassword ? "eye-off" : "eye"}
-                size={24}
-                color="#888"
+
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                placeholderTextColor="#888"
               />
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeButton}
+              >
+                <Ionicons
+                  name={showPassword ? "eye-off" : "eye"}
+                  size={24}
+                  color="#888"
+                />
+              </TouchableOpacity>
+            </View>
 
-          <View style={styles.passwordContainer}>
-            <TextInput
-              style={styles.passwordInput}
-              placeholder="Confirm Password"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showConfirmPassword}
-              placeholderTextColor="#888"
-            />
-            <TouchableOpacity
-              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-              style={styles.eyeButton}
-            >
-              <Ionicons
-                name={showConfirmPassword ? "eye-off" : "eye"}
-                size={24}
-                color="#888"
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Confirm Password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirmPassword}
+                placeholderTextColor="#888"
               />
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={styles.eyeButton}
+              >
+                <Ionicons
+                  name={showConfirmPassword ? "eye-off" : "eye"}
+                  size={24}
+                  color="#888"
+                />
+              </TouchableOpacity>
+            </View>
 
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleSignup}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#32CD32" />
-            ) : (
-              <Text style={styles.buttonText}>Sign Up</Text>
-            )}
-          </TouchableOpacity>
-
-          <View style={styles.dividerContainer}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerText}>or continue with</Text>
-            <View style={styles.divider} />
-          </View>
-
-          <TouchableOpacity
-            style={styles.googleButton}
-            onPress={handleGoogleSignIn}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#333" />
-            ) : (
-              <>
-                <Ionicons name="logo-google" size={24} color="#333" />
-                <Text style={styles.googleButtonText}>Sign Up with Google</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          <View style={styles.loginContainer}>
-            <Text style={styles.loginText}>Already have an account?</Text>
             <TouchableOpacity
-              onPress={() => router.push("/Screen/Auth/LoginScreen")}
+              style={styles.button}
+              onPress={handleSignup}
+              disabled={loading}
             >
-              <Text style={styles.loginLink}> Sign In</Text>
+              {loading ? (
+                <ActivityIndicator color="#32CD32" />
+              ) : (
+                <Text style={styles.buttonText}>Sign Up</Text>
+              )}
             </TouchableOpacity>
+
+            <View style={styles.dividerContainer}>
+              <View style={styles.divider} />
+              <Text style={styles.dividerText}>or continue with</Text>
+              <View style={styles.divider} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.googleButton}
+              onPress={handleGoogleSignIn}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#13c516ff" />
+              ) : (
+                <>
+                  <Ionicons name="logo-google" size={24} color="#13c516ff" />
+                  <Text style={styles.googleButtonText}>Sign Up with Google</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.loginContainer}>
+              <Text style={styles.loginText}>Already have an account?</Text>
+              <TouchableOpacity
+                onPress={() => router.replace("/Screen/Auth/LoginScreen")}
+              >
+                <Text style={styles.loginLink}> Sign In</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

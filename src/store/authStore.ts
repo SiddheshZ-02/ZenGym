@@ -6,7 +6,7 @@ import {
 } from "@react-native-google-signin/google-signin";
 import { AuthError, Session, User } from "@supabase/supabase-js";
 import * as WebBrowser from "expo-web-browser";
-import { Linking, Platform } from "react-native";
+import { Platform } from "react-native";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -40,6 +40,7 @@ interface AuthState {
   ) => Promise<{ error: AuthError | null }>;
   signInWithGoogle: () => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<{ error: string | null }>;
   clearError: () => void;
 }
 
@@ -139,6 +140,9 @@ export const useAuthStore = create<AuthState>()(
               options: {
                 redirectTo: "zengym://auth-callback",
                 skipBrowserRedirect: true,
+                queryParams: {
+                  prompt: "select_account", // This forces the account picker on web
+                },
               },
             });
 
@@ -168,6 +172,12 @@ export const useAuthStore = create<AuthState>()(
           } else {
             // Native Google Sign-In
             await GoogleSignin.hasPlayServices();
+            // Clear any existing sign-in to force account picker
+            try {
+              await GoogleSignin.signOut();
+            } catch (e) {
+              // Ignore errors if no user was signed in
+            }
             const userInfo = await GoogleSignin.signIn();
 
             if (!userInfo.data?.idToken) {
@@ -209,6 +219,16 @@ export const useAuthStore = create<AuthState>()(
       signOut: async () => {
         set({ loading: true, error: null });
         try {
+          // Sign out of Google first if we're on native
+          if (Platform.OS !== "web") {
+            try {
+              // Try to sign out of Google, ignore any errors
+              await GoogleSignin.signOut();
+            } catch (googleErr) {
+              console.error("Google sign out error (ignoring):", googleErr);
+            }
+          }
+
           const { error } = await supabase.auth.signOut();
           if (error) {
             console.error("Sign out error:", error);
@@ -218,6 +238,46 @@ export const useAuthStore = create<AuthState>()(
           getProfileStore().getState().clearProfile();
         } catch (error) {
           console.error("Sign out error:", error);
+        } finally {
+          set({ loading: false });
+        }
+      },
+
+      deleteAccount: async () => {
+        const user = get().user;
+        if (!user) {
+          return { error: "You must be logged in to delete your account" };
+        }
+        set({ loading: true, error: null });
+        try {
+          // Delete user workouts
+          await supabase.from("user_workouts").delete().eq("user_id", user.id);
+
+          // Delete user profile
+          await supabase.from("profiles").delete().eq("user_id", user.id);
+
+          // Delete all files in user's storage folder
+          try {
+            const { data: files } = await supabase.storage
+              .from("avatars")
+              .list(user.id);
+
+            if (files && files.length > 0) {
+              const filePaths = files.map((file) => `${user.id}/${file.name}`);
+              await supabase.storage.from("avatars").remove(filePaths);
+            }
+          } catch (storageError) {
+            console.error("Storage deletion error:", storageError);
+            // Continue even if storage deletion fails
+          }
+
+          // Sign out the user
+          await get().signOut();
+
+          return { error: null };
+        } catch (error: any) {
+          console.error("Delete account error:", error);
+          return { error: error.message || "Failed to delete account" };
         } finally {
           set({ loading: false });
         }

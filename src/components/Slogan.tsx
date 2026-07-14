@@ -46,6 +46,7 @@ const useStyles = createThemedStyles((_, responsive) => {
       fontWeight: "700",
       color: "white",
       lineHeight: fontSizes.hero + 4,
+      maxWidth:"100%"
     },
   });
 });

@@ -1,19 +1,20 @@
 import { createThemedStyles } from "@/constants/responsive";
 import { ExerciseType, useDataStore } from "@/store/dataStore";
+import { Feather } from "@expo/vector-icons";
 import AntDesign from "@expo/vector-icons/AntDesign";
-import { Entypo, Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  RefreshControl,
   View,
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -33,7 +34,8 @@ const useStyles = createThemedStyles((_, responsive) => {
   return StyleSheet.create({
     safeArea: {
       flex: 1,
-      backgroundColor: "#000",
+      backgroundColor: "#32CD32",
+      
     },
     screen: {
       flex: 1,
@@ -152,11 +154,20 @@ const useStyles = createThemedStyles((_, responsive) => {
 const BodyPartScreen = () => {
   const [filteredParts, setFilteredParts] = useState<ExerciseType[]>([]);
   const [searchText, setSearchText] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
 
   const router = useRouter();
   const { name } = useLocalSearchParams();
   const { exercises, loading, fetchExercises } = useDataStore();
   const styles = useStyles();
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    if (name) {
+      await fetchExercises(name as string);
+    }
+    setRefreshing(false);
+  };
 
   useEffect(() => {
     if (name) {
@@ -206,13 +217,15 @@ const BodyPartScreen = () => {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar backgroundColor="#32CD32" barStyle="dark-content" />
+    <SafeAreaView style={styles.safeArea} >
 
       <View style={styles.screen}>
         <View style={styles.headingContainerRow}>
           <Text style={styles.headingTextWithBack}>{name}</Text>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backBtn}
+          >
             <Feather name="chevron-left" size={28} color="black" />
           </TouchableOpacity>
         </View>
@@ -241,6 +254,14 @@ const BodyPartScreen = () => {
             contentContainerStyle={styles.listContent}
             keyExtractor={(item) => item.id.toString()}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={["#32CD32"]}
+                tintColor="#32CD32"
+              />
+            }
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.rowCard}

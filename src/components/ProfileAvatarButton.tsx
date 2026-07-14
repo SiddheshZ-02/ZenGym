@@ -1,10 +1,11 @@
-import { createThemedStyles } from "@/constants/responsive";
+import { createThemedStyles, getResHeight } from "@/constants/responsive";
 import { useProfileStore } from "@/store/profileStore";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useEffect } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { getResWidth } from './../constants/responsive';
 
 interface ProfileAvatarButtonProps {
   size?: number;
@@ -19,6 +20,9 @@ const useStyles = createThemedStyles((_, _responsive) => {
       backgroundColor: "#1a1a1a",
       alignItems: "center",
       justifyContent: "center",
+      position:"absolute",
+      right:getResWidth(20),
+      top:getResHeight(30)
     },
     image: {
       width: "100%",

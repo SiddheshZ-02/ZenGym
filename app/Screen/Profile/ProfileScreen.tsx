@@ -17,6 +17,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  RefreshControl,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -34,28 +35,37 @@ const useStyles = createThemedStyles((_, responsive) => {
       backgroundColor: "#000",
     },
     header: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.md,
       borderBottomWidth: 1,
       borderBottomColor: "#333",
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      maxWidth: containerMaxWidth,
+      width: "100%",
+      alignSelf: "center",
     },
-    backBtn: {
-      position: "absolute",
-      left: spacing.md,
+    headerSpacer: {
       padding: spacing.xs,
-      zIndex: 1,
+    },
+    headerCenter: {
+      flex: 1,
+      alignItems: "center",
     },
     headerTitle: {
       fontSize: fontSizes.xl,
       fontWeight: "bold",
       color: "#32CD32",
     },
+    logoutButton: {
+      padding: spacing.sm,
+      backgroundColor: "#2a2a2a",
+      borderRadius: radius.md,
+    },
     scrollContent: {
       flexGrow: 1,
-      paddingHorizontal: spacing.lg,
+      paddingHorizontal: spacing.xl,
       paddingVertical: spacing.xl,
       alignItems: "center",
     },
@@ -134,7 +144,7 @@ const useStyles = createThemedStyles((_, responsive) => {
       fontSize: fontSizes.md,
       fontWeight: "600",
     },
-    logoutBtn: {
+    deleteAccountBtn: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
@@ -145,7 +155,7 @@ const useStyles = createThemedStyles((_, responsive) => {
       marginTop: spacing.lg,
       gap: spacing.sm,
     },
-    logoutText: {
+    deleteAccountText: {
       color: "#FF4444",
       fontSize: fontSizes.md,
       fontWeight: "600",
@@ -161,11 +171,25 @@ const useStyles = createThemedStyles((_, responsive) => {
 const ProfileScreen = () => {
   const router = useRouter();
   const styles = useStyles();
-  const { user, signOut } = useAuthStore();
-  const { profile, loading, uploading, fetchProfile, updateUsername, uploadAvatar } =
-    useProfileStore();
+  const { user, signOut, deleteAccount } = useAuthStore();
+  const {
+    profile,
+    loading,
+    uploading,
+    fetchProfile,
+    updateUsername,
+    uploadAvatar,
+  } = useProfileStore();
   const [username, setUsername] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchProfile();
+    setRefreshing(false);
+  };
 
   useEffect(() => {
     fetchProfile();
@@ -249,6 +273,31 @@ const ProfileScreen = () => {
     router.replace("/Screen/Auth/LoginScreen");
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete Account",
+      "Are you sure you want to delete your account? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setDeleting(true);
+            const { error } = await deleteAccount();
+            setDeleting(false);
+            if (error) {
+              showToast("error", error);
+            } else {
+              showToast("success", "Account deleted successfully!");
+              router.replace("/Screen/Auth/LoginScreen");
+            }
+          },
+        },
+      ],
+    );
+  };
+
   if (loading && !profile) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -263,10 +312,18 @@ const ProfileScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.screen}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.headerSpacer}
+            onPress={() => router.back()}
+          >
             <AntDesign name="arrow-left" size={24} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>My Profile</Text>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>My Profile</Text>
+          </View>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <AntDesign name="logout" size={24} color="#FF4444" />
+          </TouchableOpacity>
         </View>
 
         <KeyboardAvoidingView
@@ -276,6 +333,14 @@ const ProfileScreen = () => {
           <ScrollView
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={["#32CD32"]}
+                tintColor="#32CD32"
+              />
+            }
           >
             <View style={styles.content}>
               <View style={styles.avatarSection}>
@@ -337,18 +402,19 @@ const ProfileScreen = () => {
                 </TouchableOpacity>
               </View>
 
-              {profile?.created_at && (
-                <View style={styles.card}>
-                  <Text style={styles.label}>Member Since</Text>
-                  <Text style={styles.value}>
-                    {new Date(profile.created_at).toLocaleDateString()}
-                  </Text>
-                </View>
-              )}
-
-              <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-                <AntDesign name="logout" size={22} color="#FF4444" />
-                <Text style={styles.logoutText}>Log Out</Text>
+              <TouchableOpacity
+                style={styles.deleteAccountBtn}
+                onPress={handleDeleteAccount}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <ActivityIndicator color="#FF4444" />
+                ) : (
+                  <>
+                    <AntDesign name="delete" size={22} color="#FF4444" />
+                    <Text style={styles.deleteAccountText}>Delete Account</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           </ScrollView>

@@ -2,9 +2,10 @@ import { useDataStore } from "@/store/dataStore";
 import { useResponsive } from "@/constants/responsive";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import { Tabs } from "expo-router";
-import React from "react";
+import React, { useEffect } from "react";
 import { StyleSheet, TouchableOpacity, View, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as NavigationBar from "expo-navigation-bar";
 
 const TabsLayout = () => {
   const workoutCount = useDataStore((state) => state.workoutList.length);
@@ -16,6 +17,9 @@ const TabsLayout = () => {
   const tabBarGap = isSmallPhone ? spacing.lg : spacing.xl;
   const iconSize = isSmallPhone ? ms(20) : ms(22);
   const badgeSize = isSmallPhone ? spacing.md : spacing.lg;
+
+
+
 
   return (
     <Tabs

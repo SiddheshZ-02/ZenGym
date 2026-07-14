@@ -1,14 +1,22 @@
-import { useAuthStore } from "@/store/authStore";
+import NetworkStatusAlert from "@/components/NetworkStatusAlert";
 import { AppSystemProvider } from "@/constants/responsive";
+import { useAuthStore } from "@/store/authStore";
 import { Stack } from "expo-router";
-import React, { useEffect, Component, ReactNode } from "react";
+import React, { Component, ReactNode, useEffect } from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
-import { Text } from "react-native";
+ import * as NavigationBar from "expo-navigation-bar";
+
+
+
+
 
 // Root Error Boundary
-class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, error: Error | null }> {
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
   constructor(props: { children: ReactNode }) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -21,6 +29,8 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("Root Error Boundary caught an error:", error, errorInfo);
   }
+
+  
 
   render() {
     if (this.state.hasError) {
@@ -83,11 +93,25 @@ const App = () => {
     return initializeAuth();
   }, [initializeAuth]);
 
+//  
+// import { useEffect } from "react";
+
+useEffect(() => {
+  async function setupNavigationBar() {
+    await NavigationBar.setButtonStyleAsync("dark");
+   
+  }
+
+  setupNavigationBar();
+}, []);
+
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
         <AppSystemProvider>
+          <NetworkStatusAlert />
           <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" />
             <Stack.Screen name="Screen/Auth/index" />
             <Stack.Screen name="Screen/Auth/LoginScreen" />
             <Stack.Screen name="Screen/Auth/SignupScreen" />

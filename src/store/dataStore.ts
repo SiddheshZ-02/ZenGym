@@ -1,4 +1,5 @@
 import { supabase } from "@/services/supabaseClient";
+import { Alert } from "react-native";
 import { create } from "zustand";
 
 // Lazy import to avoid require cycle
@@ -78,6 +79,10 @@ export const useDataStore = create<DataState>((set, get) => ({
     } catch (error: any) {
       set({ error: error.message, loading: false });
       console.error("Error fetching body parts:", error);
+      Alert.alert(
+        "Network Error",
+        "Failed to load data. Please check your internet connection.",
+      );
     }
   },
 
@@ -97,6 +102,10 @@ export const useDataStore = create<DataState>((set, get) => ({
     } catch (error: any) {
       set({ error: error.message, loading: false });
       console.error("Error fetching exercises:", error);
+      Alert.alert(
+        "Network Error",
+        "Failed to load exercises. Please check your internet connection.",
+      );
     }
   },
 
@@ -119,6 +128,10 @@ export const useDataStore = create<DataState>((set, get) => ({
     } catch (error: any) {
       set({ error: error.message, loading: false });
       console.error("Error fetching exercise:", error);
+      Alert.alert(
+        "Network Error",
+        "Failed to load exercise details. Please check your internet connection.",
+      );
       return null;
     }
   },
@@ -175,6 +188,10 @@ export const useDataStore = create<DataState>((set, get) => ({
     } catch (error) {
       console.error("Error fetching workout list:", error);
       set({ workoutLoading: false });
+      Alert.alert(
+        "Network Error",
+        "Failed to load your workouts. Please check your internet connection.",
+      );
     }
   },
 
@@ -192,6 +209,10 @@ export const useDataStore = create<DataState>((set, get) => ({
       await get().fetchWorkoutList();
     } catch (error) {
       console.error("Error adding exercise to workout:", error);
+      Alert.alert(
+        "Network Error",
+        "Failed to add exercise to workout. Please check your internet connection.",
+      );
     }
   },
 
@@ -210,6 +231,10 @@ export const useDataStore = create<DataState>((set, get) => ({
       await get().fetchWorkoutList();
     } catch (error) {
       console.error("Error removing exercise from workout:", error);
+      Alert.alert(
+        "Network Error",
+        "Failed to remove exercise from workout. Please check your internet connection.",
+      );
     }
   },
 }));

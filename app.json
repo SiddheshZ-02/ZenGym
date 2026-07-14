@@ -17,7 +17,8 @@
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.siddhesh14.zengym"
+      "package": "com.siddhesh14.zengym",
+      "launchMode": "singleTask"
     },
     "web": {
       "bundler": "metro",

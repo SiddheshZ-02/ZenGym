@@ -33,7 +33,7 @@ const useStyles = createThemedStyles((_, responsive) => {
   return StyleSheet.create({
     safeArea: {
       flex: 1,
-      backgroundColor: "#000",
+      backgroundColor: "#32CD32",
     },
     screen: {
       flex: 1,
@@ -381,8 +381,7 @@ const ExerciseDetailsScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar backgroundColor="#32CD32" barStyle="dark-content" />
-
+   
       <View style={styles.screen}>
         {/* Fixed nav row, always on top */}
         <View style={styles.headerRow}>
@@ -479,6 +478,7 @@ const ExerciseDetailsScreen = () => {
         {/* Scrollable content: info, equipment, description, instructions */}
         <Animated.ScrollView
           style={{ flex: 1 }}
+      showsVerticalScrollIndicator={false}
           contentContainerStyle={[
             styles.scrollContent,
             { paddingTop: scrollContentTopPadding },
@@ -487,6 +487,7 @@ const ExerciseDetailsScreen = () => {
           onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { y: scrollY } } }],
             { useNativeDriver: false },
+          
           )}
         >
           <View style={styles.contentStack}>

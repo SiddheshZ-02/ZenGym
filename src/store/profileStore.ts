@@ -1,4 +1,5 @@
 import { supabase } from "@/services/supabaseClient";
+import { Alert } from "react-native";
 import { create } from "zustand";
 
 const getAuthStore = () => require("./authStore").useAuthStore;
@@ -50,6 +51,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     } catch (error: any) {
       console.error("Error fetching profile:", error);
       set({ error: error.message, loading: false });
+      Alert.alert("Network Error", "Failed to load profile. Please check your internet connection.");
     }
   },
 
@@ -75,6 +77,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     } catch (error: any) {
       console.error("Error updating username:", error);
       set({ error: error.message, loading: false });
+      Alert.alert("Network Error", "Failed to update username. Please check your internet connection.");
       return { error: error.message };
     }
   },
@@ -126,6 +129,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     } catch (error: any) {
       console.error("Error uploading avatar:", error);
       set({ error: error.message, uploading: false });
+      Alert.alert("Network Error", "Failed to upload avatar. Please check your internet connection.");
       return { error: error.message };
     }
   },

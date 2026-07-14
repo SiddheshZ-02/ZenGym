@@ -2,14 +2,15 @@ import { createThemedStyles } from "@/constants/responsive";
 import { useAuthStore } from "@/store/authStore";
 import { useDataStore } from "@/store/dataStore";
 import { showToast } from "@/utils/toast";
-import { Entypo, MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons } from "@expo/vector-icons";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  RefreshControl,
   StatusBar,
   StyleSheet,
   Text,
@@ -20,7 +21,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const useStyles = createThemedStyles((_, responsive) => {
   const { spacing, radius, fontSizes, ms, wp, containerMaxWidth } = responsive;
-  const imageSize = wp(80);
+  const imageSize = wp(50);
 
   return StyleSheet.create({
     safeArea: {
@@ -105,7 +106,7 @@ const useStyles = createThemedStyles((_, responsive) => {
       flexDirection: "row",
       backgroundColor: "#1a1a1a",
       borderRadius: radius.lg,
-      padding: spacing.md,
+      padding: spacing.sm,
       marginBottom: spacing.md,
       alignItems: "center",
     },
@@ -138,17 +139,30 @@ const useStyles = createThemedStyles((_, responsive) => {
     },
     deleteButton: {
       padding: spacing.xs,
+      backgroundColor:"red",
+       borderRadius: radius.lg,
     },
   });
 });
 
 const WorkoutListsScreen = () => {
-  const { workoutList, removeExerciseFromWorkout, workoutLoading } =
-    useDataStore();
+  const {
+    workoutList,
+    removeExerciseFromWorkout,
+    workoutLoading,
+    fetchWorkoutList,
+  } = useDataStore();
   const { signOut } = useAuthStore();
   const router = useRouter();
   const styles = useStyles();
   const workoutCount = workoutList.length;
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchWorkoutList();
+    setRefreshing(false);
+  };
 
   const handleLogout = async () => {
     await signOut();
@@ -158,7 +172,7 @@ const WorkoutListsScreen = () => {
 
   const removeWorkout = async (id: number) => {
     await removeExerciseFromWorkout(id);
-    showToast("info", "Exercise removed from workout list!");
+    showToast("success", "Exercise removed from workout list!");
   };
 
   const navigateToExerciseDetails = (exerciseId: number) => {
@@ -207,7 +221,7 @@ const WorkoutListsScreen = () => {
         style={styles.deleteButton}
         onPress={() => removeWorkout(item.id)}
       >
-        <MaterialIcons name="delete-outline" size={24} color="#FF4444" />
+        <MaterialIcons name="delete-outline" size={24} color="#fff" />
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -250,6 +264,14 @@ const WorkoutListsScreen = () => {
             keyExtractor={(item) => item.id.toString()}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={["#32CD32"]}
+                tintColor="#32CD32"
+              />
+            }
           />
         )}
       </View>

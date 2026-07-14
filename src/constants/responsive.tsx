@@ -9,13 +9,190 @@ import React, {
 import {
   AccessibilityInfo,
   Dimensions,
+  type ImageStyle,
   PixelRatio,
   Platform,
+  ScaledSize,
   StyleSheet,
+  type TextStyle,
   useWindowDimensions,
+  type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+type NamedStyles<T> = { [P in keyof T]: ViewStyle | TextStyle | ImageStyle };
+
+type AnyStyle = ViewStyle | TextStyle | ImageStyle;
+
+const PHONE_BASELINE = { width: 375, height: 812 };
+const TABLET_BASELINE = { width: 768, height: 1024 };
+
+function getWindow(): ScaledSize {
+  return Dimensions.get("window");
+}
+
+function isTabletLike(window: ScaledSize) {
+  const minDim = Math.min(window.width, window.height);
+  return minDim >= 600;
+}
+
+let windowMetrics = getWindow();
+let baseline = isTabletLike(windowMetrics) ? TABLET_BASELINE : PHONE_BASELINE;
+let widthScale = windowMetrics.width / baseline.width;
+let heightScale = windowMetrics.height / baseline.height;
+let avgScale = (widthScale + heightScale) / 2;
+
+if (typeof Dimensions.addEventListener === "function") {
+  Dimensions.addEventListener("change", ({ window }) => {
+    windowMetrics = window;
+    baseline = isTabletLike(windowMetrics) ? TABLET_BASELINE : PHONE_BASELINE;
+    widthScale = windowMetrics.width / baseline.width;
+    heightScale = windowMetrics.height / baseline.height;
+    avgScale = (widthScale + heightScale) / 2;
+  });
+}
+
+export function deviceWidth() {
+  return windowMetrics.width;
+}
+
+export function deviceHeight() {
+  return windowMetrics.height;
+}
+
+export function toWidth(percent: number) {
+  return (deviceWidth() * percent) / 100;
+}
+
+export function toHeight(percent: number) {
+  return (deviceHeight() * percent) / 100;
+}
+
+export function getResWidth(value: number) {
+  return PixelRatio.roundToNearestPixel(value * widthScale);
+}
+
+export function getResHeight(value: number) {
+  return PixelRatio.roundToNearestPixel(value * heightScale);
+}
+
+export function getResFont(value: number) {
+  const fontScale = PixelRatio.getFontScale();
+  const scaled = value * Math.min(widthScale, heightScale);
+  return PixelRatio.roundToNearestPixel(scaled / fontScale);
+}
+
+function getResBorder(value: number) {
+  const gentle = Math.max(0.85, Math.min(1.15, avgScale));
+  return PixelRatio.roundToNearestPixel(value * gentle);
+}
+
+const DO_NOT_SCALE_KEYS = new Set([
+  "flex",
+  "flexGrow",
+  "flexShrink",
+  "flexBasis",
+  "opacity",
+  "zIndex",
+  "aspectRatio",
+  "shadowOpacity",
+  "shadowRadius",
+  "elevation",
+]);
+
+function scaleNumberForProp(prop: string, value: number) {
+  if (DO_NOT_SCALE_KEYS.has(prop)) return value;
+
+  if (
+    prop === "fontSize" ||
+    prop === "lineHeight" ||
+    prop === "letterSpacing"
+  ) {
+    return getResFont(value);
+  }
+
+  if (prop.includes("border") && prop.endsWith("Width")) {
+    return getResBorder(value);
+  }
+  if (prop === "borderRadius") {
+    return PixelRatio.roundToNearestPixel(
+      value * Math.min(widthScale, heightScale),
+    );
+  }
+
+  const isHorizontal =
+    prop === "width" ||
+    prop === "minWidth" ||
+    prop === "maxWidth" ||
+    prop === "left" ||
+    prop === "right" ||
+    prop.endsWith("Left") ||
+    prop.endsWith("Right") ||
+    prop.endsWith("Horizontal");
+
+  const isVertical =
+    prop === "height" ||
+    prop === "minHeight" ||
+    prop === "maxHeight" ||
+    prop === "top" ||
+    prop === "bottom" ||
+    prop.endsWith("Top") ||
+    prop.endsWith("Bottom") ||
+    prop.endsWith("Vertical");
+
+  if (
+    prop.startsWith("margin") ||
+    prop.startsWith("padding") ||
+    prop === "gap" ||
+    prop === "rowGap" ||
+    prop === "columnGap"
+  ) {
+    if (isHorizontal) return getResWidth(value);
+    if (isVertical) return getResHeight(value);
+    return PixelRatio.roundToNearestPixel(value * avgScale);
+  }
+
+  if (isHorizontal) return getResWidth(value);
+  if (isVertical) return getResHeight(value);
+
+  return PixelRatio.roundToNearestPixel(value * avgScale);
+}
+
+function scaleStyleObject(
+  style: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(style)) {
+    if (typeof val === "number") {
+      out[key] = scaleNumberForProp(key, val);
+      continue;
+    }
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      out[key] = scaleStyleObject(val as Record<string, unknown>);
+      continue;
+    }
+    out[key] = val;
+  }
+  return out;
+}
+
+export const AppStyleSheet = {
+  create<T extends NamedStyles<T>>(styles: T | NamedStyles<T>): T {
+    const scaled: Record<string, AnyStyle> = {};
+    for (const [name, style] of Object.entries(styles)) {
+      if (style && typeof style === "object" && !Array.isArray(style)) {
+        scaled[name] = scaleStyleObject(
+          style as Record<string, unknown>,
+        ) as AnyStyle;
+      } else {
+        scaled[name] = style as AnyStyle;
+      }
+    }
+    return StyleSheet.create(scaled as T);
+  },
+};
+
+// Original responsive utilities (from git history)
 const BASE_WIDTH = 393;
 const BASE_HEIGHT = 852;
 const MAX_SCALE = 1.25;
@@ -112,7 +289,8 @@ export interface LayoutTokens {
   containerMaxWidth: number | undefined;
 }
 
-export interface ResponsiveReturn extends ScaleFunctions, DeviceInfo, LayoutTokens {
+export interface ResponsiveReturn
+  extends ScaleFunctions, DeviceInfo, LayoutTokens {
   SCREEN: ScreenInfo;
   insets: ReturnType<typeof useSafeAreaInsets>;
   rowOnTablet: "row" | "column";
@@ -288,9 +466,7 @@ const ResponsiveProvider = ({ children }: { children: ReactNode }) => {
       PixelRatio.roundToNearestPixel(size * hRatio);
 
     const ms: ScaleFunctions["ms"] = (size, factor = 0.5) =>
-      PixelRatio.roundToNearestPixel(
-        size + (baseScale * size - size) * factor,
-      );
+      PixelRatio.roundToNearestPixel(size + (baseScale * size - size) * factor);
 
     const fp: ScaleFunctions["fp"] = (size) => {
       const scaled = size * baseScale;
