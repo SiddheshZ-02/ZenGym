@@ -7,15 +7,13 @@ import {
 import { useDataStore } from "@/store/dataStore";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { RefreshControl } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
-  StyleSheet,
+  FlatList, RefreshControl, StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
 interface ExerciseProps {
@@ -42,8 +40,8 @@ const useStyles = createThemedStyles((_, responsive) => {
       paddingHorizontal: spacing.lg,
       backgroundColor: "#32CD32",
       borderRadius: radius.full,
-      alignSelf: "flex-start",
-      marginBottom: spacing.md,
+      alignSelf: "center",
+      marginTop: spacing.md,
       marginHorizontal: spacing.md,
     },
     sectionTitleText: {
@@ -54,7 +52,6 @@ const useStyles = createThemedStyles((_, responsive) => {
     gridContent: {
       gap: spacing.md,
       paddingBottom: getResHeight(65),
-    
     },
     bodyPartCard: {
       flex: 1,
@@ -98,31 +95,101 @@ const Exercise = ({ ListHeaderComponent }: ExerciseProps) => {
   const columns = useAdaptiveValue(2, 3);
   const [refreshing, setRefreshing] = useState(false);
 
+  // ALL HOOKS MUST BE DEFINED BEFORE EARLY RETURNS
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchBodyParts();
+    setRefreshing(false);
+  }, [fetchBodyParts]);
+
   useEffect(() => {
     fetchBodyParts();
   }, [fetchBodyParts]);
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchBodyParts();
-    setRefreshing(false);
-  };
-
-  const handleBodyPart = (name: string) => {
-    router.push({
-      pathname: "/Screen/BodyPart/BodyPartScreen",
-      params: { name },
-    });
-  };
+  const handleBodyPart = useCallback(
+    (name: string) => {
+      router.push({
+        pathname: "/Screen/BodyPart/BodyPartScreen",
+        params: { name },
+      });
+    },
+    [router],
+  );
 
   const horizontalPadding = 16;
-  const availableWidth = Math.min(
-    SCREEN.width,
-    containerMaxWidth ?? SCREEN.width,
-  );
-  const cardWidth =
-    (availableWidth - horizontalPadding * 2 - 12 * (columns - 1)) / columns;
+  const availableWidth = useMemo(() => {
+    return Math.min(SCREEN.width, containerMaxWidth ?? SCREEN.width);
+  }, [SCREEN.width, containerMaxWidth]);
 
+  const cardWidth = useMemo(() => {
+    return (
+      (availableWidth - horizontalPadding * 2 - 12 * (columns - 1)) / columns
+    );
+  }, [availableWidth, columns]);
+
+  // THESE WERE AFTER EARLY RETURN BEFORE! MOVE THEM HERE:
+  const FlatListHeader = useMemo(() => {
+    return (
+      <>
+        {typeof ListHeaderComponent === "function" ? (
+          <ListHeaderComponent />
+        ) : (
+          ListHeaderComponent
+        )}
+        <View style={styles.sectionShell}>
+          <View style={styles.sectionTitle}>
+            <Text style={styles.sectionTitleText}>Exercise</Text>
+          </View>
+        </View>
+      </>
+    );
+  }, [
+    ListHeaderComponent,
+    styles.sectionShell,
+    styles.sectionTitle,
+    styles.sectionTitleText,
+  ]);
+
+  const renderItem = useCallback(
+    ({ item }: { item: any }) => {
+      const imageSource = item.image_url
+        ? { uri: item.image_url }
+        : {
+            uri:
+              "https://placehold.co/180x180/32CD32/000?text=" +
+              encodeURIComponent(item.name),
+          };
+
+      return (
+        <TouchableOpacity
+          style={[styles.bodyPartTouch, { width: cardWidth }]}
+          onPress={() => handleBodyPart(item?.name)}
+        >
+          <View style={styles.bodyPartCard}>
+            <Image
+              source={imageSource}
+              style={styles.bodyPartImage}
+              placeholder={{ blurhash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4" }}
+              transition={300}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+            />
+            <Text style={styles.bodyPartLabel}>{item.name}</Text>
+          </View>
+        </TouchableOpacity>
+      );
+    },
+    [
+      styles.bodyPartTouch,
+      styles.bodyPartCard,
+      styles.bodyPartImage,
+      styles.bodyPartLabel,
+      cardWidth,
+      handleBodyPart,
+    ],
+  );
+
+  // NOW EARLY RETURN IS AFTER ALL HOOKS
   if (loading) {
     return (
       <View style={styles.loadingState}>
@@ -130,21 +197,6 @@ const Exercise = ({ ListHeaderComponent }: ExerciseProps) => {
       </View>
     );
   }
-
-  const FlatListHeader = () => (
-    <>
-      {typeof ListHeaderComponent === "function" ? (
-        <ListHeaderComponent />
-      ) : (
-        ListHeaderComponent
-      )}
-      <View style={styles.sectionShell}>
-        <View style={styles.sectionTitle}>
-          <Text style={styles.sectionTitleText}>Exercise</Text>
-        </View>
-      </View>
-    </>
-  );
 
   return (
     <FlatList
@@ -162,34 +214,7 @@ const Exercise = ({ ListHeaderComponent }: ExerciseProps) => {
           tintColor="#32CD32"
         />
       }
-      renderItem={({ item }) => {
-        const imageSource = item.image_url
-          ? { uri: item.image_url }
-          : {
-              uri:
-                "https://placehold.co/180x180/32CD32/000?text=" +
-                encodeURIComponent(item.name),
-            };
-
-        return (
-          <TouchableOpacity
-            style={[styles.bodyPartTouch, { width: cardWidth }]}
-            onPress={() => handleBodyPart(item?.name)}
-          >
-            <View style={styles.bodyPartCard}>
-              <Image
-                source={imageSource}
-                style={styles.bodyPartImage}
-                placeholder={{ blurhash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4" }}
-                transition={300}
-                contentFit="cover"
-                cachePolicy="memory-disk"
-              />
-              <Text style={styles.bodyPartLabel}>{item.name}</Text>
-            </View>
-          </TouchableOpacity>
-        );
-      }}
+      renderItem={renderItem}
     />
   );
 };

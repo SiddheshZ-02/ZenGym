@@ -2,7 +2,12 @@ import { createThemedStyles, getResWidth } from "@/constants/responsive";
 import { useAuthStore } from "@/store/authStore";
 import { useDataStore } from "@/store/dataStore";
 import { showToast } from "@/utils/toast";
-import { MaterialIcons, Ionicons } from "@expo/vector-icons";
+import {
+  MaterialIcons,
+  Ionicons,
+  MaterialCommunityIcons,
+  FontAwesome5,
+} from "@expo/vector-icons";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -187,11 +192,16 @@ const WorkoutListsScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar backgroundColor="#32CD32" barStyle="dark-content" />
-
       <View style={styles.screen}>
         <View style={styles.header}>
-          <View style={styles.headerSpacer} />
+          <TouchableOpacity style={styles.logoutButton}   onPress={() => router.push("/Screen/Plans/PlansScreen")}>
+            <FontAwesome5
+              name="crown"
+              size={28}
+              color="#EFBF04"
+            />
+          </TouchableOpacity>
+
           <View style={styles.headerCenter}>
             <Text style={styles.title}>My Workout List</Text>
             <Text style={styles.subtitle}>

@@ -2,11 +2,11 @@ import NetworkStatusAlert from "@/components/NetworkStatusAlert";
 import { AppSystemProvider } from "@/constants/responsive";
 import { useAuthStore } from "@/store/authStore";
 import { Stack } from "expo-router";
-import React, { Component, ReactNode, useEffect } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { Component, ReactNode, useEffect, useRef } from "react";
+import { AppState, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
- import * as NavigationBar from "expo-navigation-bar";
+import * as NavigationBar from "expo-navigation-bar";
 
 
 
@@ -88,22 +88,50 @@ const errorStyles = StyleSheet.create({
 
 const App = () => {
   const { initializeAuth } = useAuthStore();
+  const appState = useRef(AppState.currentState);
+
+  useEffect(() => {
+    // Global error handler to catch "Unable to activate keep awake"
+    const originalError = console.error;
+    console.error = (...args: any[]) => {
+      const errorMessage = args.join(' ');
+      if (errorMessage.includes('Unable to activate keep awake')) {
+        // Ignore this specific error
+        return;
+      }
+      originalError.apply(console, args);
+    };
+
+    return () => {
+      console.error = originalError;
+    };
+  }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     return initializeAuth();
   }, [initializeAuth]);
 
-//  
-// import { useEffect } from "react";
+  useEffect(() => {
+    async function setupNavigationBar() {
+      try {
+        await NavigationBar.setButtonStyleAsync("dark");
+      } catch (e) {
+        console.warn("Navigation bar setup error:", e);
+      }
+    }
 
-useEffect(() => {
-  async function setupNavigationBar() {
-    await NavigationBar.setButtonStyleAsync("dark");
-   
-  }
-
-  setupNavigationBar();
-}, []);
+    setupNavigationBar();
+  }, []);
 
   return (
     <ErrorBoundary>
@@ -119,7 +147,8 @@ useEffect(() => {
             <Stack.Screen name="Screen/BodyPart/BodyPartScreen" />
             <Stack.Screen name="Screen/ExerciseDetails/ExerciseDetailsScreen" />
             <Stack.Screen name="Screen/Profile/ProfileScreen" />
-            <Stack.Screen name="Screen/Product/ProductsScreen" />
+            <Stack.Screen name="Screen/Products/ProductsScreen" />
+            <Stack.Screen name="Screen/Plans/PlansScreen" />
           </Stack>
           <Toast />
         </AppSystemProvider>

@@ -2,7 +2,7 @@ import ProfileAvatarButton from "@/components/ProfileAvatarButton";
 import { createThemedStyles } from "@/constants/responsive";
 import { useAuthStore } from "@/store/authStore";
 import { useProfileStore } from "@/store/profileStore";
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 const useStyles = createThemedStyles((_, responsive) => {
@@ -46,7 +46,7 @@ const useStyles = createThemedStyles((_, responsive) => {
       fontWeight: "700",
       color: "white",
       lineHeight: fontSizes.hero + 4,
-      maxWidth:"100%"
+      maxWidth: "100%",
     },
   });
 });
@@ -56,10 +56,13 @@ const Slogan = () => {
   const { profile } = useProfileStore();
   const { user } = useAuthStore();
 
-  const displayName =
-    profile?.username?.trim() ||
-    user?.email?.split("@")[0] ||
-    "";
+  const displayName = useMemo(() => {
+    return (
+      profile?.username?.trim() ||
+      user?.email?.split("@")[0] ||
+      ""
+    );
+  }, [profile?.username, user?.email]);
 
   return (
     <View style={styles.shell}>
