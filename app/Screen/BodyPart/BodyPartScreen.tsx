@@ -1,4 +1,4 @@
-import { createThemedStyles } from "@/constants/responsive";
+import { createThemedStyles, getResWidth } from "@/constants/responsive";
 import { ExerciseType, useDataStore } from "@/store/dataStore";
 import { Feather } from "@expo/vector-icons";
 import AntDesign from "@expo/vector-icons/AntDesign";
@@ -34,7 +34,7 @@ const useStyles = createThemedStyles((_, responsive) => {
   return StyleSheet.create({
     safeArea: {
       flex: 1,
-      backgroundColor: "#32CD32",
+     backgroundColor: "#000",
       
     },
     screen: {
@@ -46,13 +46,16 @@ const useStyles = createThemedStyles((_, responsive) => {
       width: "100%",
       alignSelf: "center",
       maxWidth: containerMaxWidth,
+      
+      
     },
     headingContainerRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      // paddingHorizontal: spacing.md,
+     
       marginBottom: spacing.xs,
+    
     },
     backBtn: {
       position: "absolute",
@@ -64,12 +67,13 @@ const useStyles = createThemedStyles((_, responsive) => {
       fontSize: isSmallPhone ? fontSizes.lg : fontSizes.xl,
       fontWeight: "800",
       textTransform: "capitalize",
-      backgroundColor: "#32CD32",
+      backgroundColor: "#000",
       width: "100%",
       textAlign: "center",
-      paddingVertical: spacing.sm,
+      padding: spacing.sm,
       // borderRadius: radius.xl,
-      color: "#000",
+      color: "#32CD32",
+      
     },
     searchBarContainer: {
       paddingHorizontal: spacing.md,
@@ -235,7 +239,6 @@ const BodyPartScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea} >
-
       <View style={styles.screen}>
         <View style={styles.headingContainerRow}>
           <Text style={styles.headingTextWithBack}>{name}</Text>
@@ -243,7 +246,7 @@ const BodyPartScreen = () => {
             onPress={() => router.back()}
             style={styles.backBtn}
           >
-            <Feather name="chevron-left" size={28} color="black" />
+            <Feather name="chevron-left" size={30} color="#32CD32" />
           </TouchableOpacity>
         </View>
 

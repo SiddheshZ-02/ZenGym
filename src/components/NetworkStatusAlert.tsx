@@ -17,7 +17,7 @@ const useStyles = createThemedStyles((_, responsive) => {
     offlineCard: {
       backgroundColor: "#1a1a1a",
       borderRadius: radius.xl,
-      padding: spacing.xl,
+      padding: spacing.md,
       alignItems: "center",
       width: "85%",
       maxWidth: 400,
@@ -28,13 +28,13 @@ const useStyles = createThemedStyles((_, responsive) => {
       width: 80,
       height: 80,
       borderRadius: radius.full,
-      backgroundColor: "#32CD3220",
+      backgroundColor: "#cd4c3220",
       justifyContent: "center",
       alignItems: "center",
       marginBottom: spacing.lg,
     },
     offlineTitle: {
-      fontSize: fontSizes.xxl,
+      fontSize: fontSizes.xl,
       fontWeight: "800",
       color: "#32CD32",
       marginBottom: spacing.sm,
@@ -104,7 +104,7 @@ const NetworkStatusAlert = () => {
           ]}
         >
           <View style={styles.iconContainer}>
-            <Feather name="wifi-off" size={40} color="#32CD32" />
+            <Feather name="wifi-off" size={40} color="#c71414ff" />
           </View>
           <Text style={styles.offlineTitle}>OFFLINE</Text>
           <Text style={styles.offlineMessage}>

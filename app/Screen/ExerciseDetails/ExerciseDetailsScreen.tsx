@@ -1,6 +1,7 @@
 import { createThemedStyles } from "@/constants/responsive";
 import { ExerciseType, useDataStore } from "@/store/dataStore";
 import { showToast } from "@/utils/toast";
+import { transform } from "@babel/core";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image } from "expo-image";
@@ -44,7 +45,7 @@ const useStyles = createThemedStyles((_, responsive) => {
   return StyleSheet.create({
     safeArea: {
       flex: 1,
-      backgroundColor: "#32CD32",
+      backgroundColor: "#000",
     },
     screen: {
       flex: 1,
@@ -79,7 +80,7 @@ const useStyles = createThemedStyles((_, responsive) => {
       zIndex: 30,
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
+
       paddingHorizontal: spacing.md,
       paddingTop: spacing.md,
       paddingBottom: spacing.sm,
@@ -93,7 +94,8 @@ const useStyles = createThemedStyles((_, responsive) => {
       maxWidth: containerMaxWidth,
       alignSelf: "center",
       width: "100%",
-      backgroundColor: "#32CD32",
+      backgroundColor: "#000",
+      padding: spacing.sm,
     },
     headerButton: {
       padding: spacing.xs,
@@ -106,12 +108,12 @@ const useStyles = createThemedStyles((_, responsive) => {
       fontSize: isSmallPhone ? fontSizes.md : fontSizes.lg,
       fontWeight: "700",
       textAlign: "center",
-      backgroundColor: "#32CD32",
+      backgroundColor: "#000",
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
       borderRadius: radius.full,
       textTransform: "capitalize",
-      color: "#000",
+      color: "#32CD32",
     },
     navButton: {
       padding: spacing.xs,
@@ -442,7 +444,6 @@ const ExerciseDetailsScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-   
       <View style={styles.screen}>
         {/* Fixed nav row, always on top */}
         <View style={styles.headerRow}>
@@ -450,7 +451,7 @@ const ExerciseDetailsScreen = () => {
             style={styles.headerButton}
             onPress={() => router.back()}
           >
-            <Feather name="chevron-left" size={28} color="black" />
+            <Feather name="chevron-left" size={30} color="#32CD32" />
           </TouchableOpacity>
 
           <View style={styles.titleWrap}>
@@ -539,7 +540,7 @@ const ExerciseDetailsScreen = () => {
         {/* Scrollable content: info, equipment, description, instructions */}
         <Animated.ScrollView
           style={{ flex: 1 }}
-      showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
           contentContainerStyle={[
             styles.scrollContent,
             { paddingTop: scrollContentTopPadding },
@@ -548,7 +549,6 @@ const ExerciseDetailsScreen = () => {
           onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { y: scrollY } } }],
             { useNativeDriver: false },
-          
           )}
         >
           <View style={styles.contentStack}>

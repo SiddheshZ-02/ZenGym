@@ -124,7 +124,7 @@ const App = () => {
   useEffect(() => {
     async function setupNavigationBar() {
       try {
-        await NavigationBar.setButtonStyleAsync("dark");
+        await NavigationBar.setButtonStyleAsync("light");
       } catch (e) {
         console.warn("Navigation bar setup error:", e);
       }

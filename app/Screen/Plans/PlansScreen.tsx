@@ -28,7 +28,7 @@ const useStyles = createThemedStyles((_, responsive) => {
   return {
     safeArea: {
       flex: 1,
-      backgroundColor: "#32CD32",
+         backgroundColor: "#000",
     },
     screen: {
       flex: 1,
@@ -50,11 +50,11 @@ const useStyles = createThemedStyles((_, responsive) => {
       fontSize: isSmallPhone ? fontSizes.lg : fontSizes.xl,
       fontWeight: "800",
       textTransform: "capitalize",
-      backgroundColor: "#32CD32",
+      backgroundColor: "#000",
       width: "100%",
       textAlign: "center",
       paddingVertical: spacing.sm,
-      color: "#000",
+      color: "#32CD32",
     },
     contentShell: {
       flex: 1,
@@ -260,7 +260,7 @@ const PlansScreen = () => {
             onPress={() => router.back()}
             style={styles.backBtn}
           >
-            <Feather name="chevron-left" size={28} color="black" />
+            <Feather name="chevron-left" size={30} color="#32CD32" />
           </TouchableOpacity>
         </View>
         <View style={styles.contentShell}>
