@@ -1,8 +1,9 @@
 import React, { useEffect, useRef } from "react";
 import { View, Text, StyleSheet, Modal, Animated, Easing } from "react-native";
-import { useNetworkStatus } from "@/store/networkStore";
+
 import { Feather } from "@expo/vector-icons";
 import { createThemedStyles } from "@/constants/responsive";
+import { useNetworkStatus } from '@/store/networkStore';
 
 const useStyles = createThemedStyles((_, responsive) => {
   const { spacing, radius, fontSizes } = responsive;

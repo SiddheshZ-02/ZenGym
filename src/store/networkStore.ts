@@ -1,6 +1,7 @@
-import NetInfo from "@react-native-community/netinfo";
-import { useEffect } from "react";
+import { Platform } from "react-native";
 import { create } from "zustand";
+import NetInfo, { NetInfoState } from "@react-native-community/netinfo";
+import { useEffect } from "react";
 
 interface NetworkState {
   isConnected: boolean;
@@ -13,21 +14,44 @@ export const useNetworkStore = create<NetworkState>((set) => ({
   isInternetReachable: true,
 
   initializeNetwork: () => {
-    let unsubscribeNetInfo: (() => void) | null = null;
-
-    // Use @react-native-community/netinfo for both native and web
-    unsubscribeNetInfo = NetInfo.addEventListener((state) => {
+    if (Platform.OS === "web") {
+      // Web: use navigator.onLine
       set({
-        isConnected: state.isConnected ?? true,
-        isInternetReachable: state.isInternetReachable ?? true,
+        isConnected: navigator.onLine,
+        isInternetReachable: navigator.onLine,
       });
-    });
 
-    return () => {
-      if (unsubscribeNetInfo) {
-        unsubscribeNetInfo();
-      }
-    };
+      const onlineHandler = () =>
+        set({ isConnected: true, isInternetReachable: true });
+      const offlineHandler = () =>
+        set({ isConnected: false, isInternetReachable: false });
+
+      window.addEventListener("online", onlineHandler);
+      window.addEventListener("offline", offlineHandler);
+
+      return () => {
+        window.removeEventListener("online", onlineHandler);
+        window.removeEventListener("offline", offlineHandler);
+      };
+    } else {
+      // Native (iOS/Android): use NetInfo
+      const unsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
+        set({
+          isConnected: state.isConnected ?? false,
+          isInternetReachable: state.isInternetReachable,
+        });
+      });
+
+      // Get initial state immediately (don't wait for first change event)
+      NetInfo.fetch().then((state) => {
+        set({
+          isConnected: state.isConnected ?? false,
+          isInternetReachable: state.isInternetReachable,
+        });
+      });
+
+      return unsubscribe;
+    }
   },
 }));
 
