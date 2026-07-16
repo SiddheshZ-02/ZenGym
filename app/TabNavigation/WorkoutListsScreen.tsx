@@ -12,12 +12,10 @@ import {
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   RefreshControl,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -48,10 +46,12 @@ const WorkoutListsScreen = () => {
     setExerciseDay,
   } = useDataStore();
   const {
-    reminders,
-    fetchReminders,
-    toggleDayReminder,
-    disableDayReminder,
+    setting,
+    fetchReminderSetting,
+    enableReminder,
+    disableReminder,
+    syncReminderDays,
+    clearReminderSetting,
   } = useNotificationStore();
   const { signOut } = useAuthStore();
   const router = useRouter();
@@ -61,13 +61,34 @@ const WorkoutListsScreen = () => {
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState<any>(null);
-  const [timePickerDay, setTimePickerDay] = useState<string | null>(null);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   useEffect(() => {
-    fetchReminders();
-  }, []);
+    fetchReminderSetting();
+    return () => clearReminderSetting();
+  }, [fetchReminderSetting, clearReminderSetting]);
 
-  // Group workouts by day of week
+  // Days that actually have at least one workout assigned
+const activeDays = useMemo(() => {
+  const daysSet = new Set<string>();
+  workoutList.forEach((w) => {
+    if (w.dayOfWeek && DAYS_OF_WEEK.includes(w.dayOfWeek)) {
+      daysSet.add(w.dayOfWeek);
+    }
+  });
+  return DAYS_OF_WEEK.filter((day) => daysSet.has(day));
+}, [workoutList]);;
+
+  const activeDaysKey = activeDays.slice().sort().join(",");
+
+  // Keep an already-enabled reminder in sync if the user adds/removes days
+  useEffect(() => {
+    if (setting?.is_enabled) {
+      syncReminderDays(activeDays);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeDaysKey]);
+
   const groupWorkoutsByDay = () => {
     const grouped: Record<string, any[]> = { Unassigned: [] };
     DAYS_OF_WEEK.forEach((day) => (grouped[day] = []));
@@ -88,7 +109,7 @@ const WorkoutListsScreen = () => {
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchWorkoutList();
-    await fetchReminders();
+    await fetchReminderSetting();
     setRefreshing(false);
   };
 
@@ -128,27 +149,26 @@ const WorkoutListsScreen = () => {
     setSelectedExercise(null);
   };
 
-  const getReminderForDay = (day: string) =>
-    reminders.find((r) => r.day_of_week === day);
+  const isReminderOn = setting?.is_enabled ?? false;
 
-  const handleReminderToggle = async (day: string, value: boolean) => {
+  const handleReminderToggle = async (value: boolean) => {
+    if (activeDays.length === 0) return; // safety guard, toggle shouldn't even render
     if (value) {
-      setTimePickerDay(day);
+      setShowTimePicker(true); // permission is requested on confirm, inside enableReminder
     } else {
-      await disableDayReminder(day);
-      showToast("success", `Reminder turned off for ${day}`);
+      await disableReminder();
+      showToast("success", "Workout reminders turned off");
     }
   };
 
   const handleTimeConfirm = async (hour: number, minute: number) => {
-    if (!timePickerDay) return;
-    const success = await toggleDayReminder(timePickerDay, hour, minute);
+    const success = await enableReminder(hour, minute, activeDays);
     if (success) {
-      showToast("success", `Reminder set for ${timePickerDay}!`);
+      showToast("success", "Workout reminders activated!");
     } else {
       showToast("error", "Couldn't set reminder. Check notification permissions.");
     }
-    setTimePickerDay(null);
+    setShowTimePicker(false);
   };
 
   const renderWorkoutItem = ({ item }: { item: any }) => (
@@ -193,50 +213,20 @@ const WorkoutListsScreen = () => {
   const renderAccordion = (day: string, workouts: any[]) => {
     if (workouts.length === 0 && day !== "Unassigned") return null;
 
-    const isUnassigned = day === "Unassigned";
-    const reminder = getReminderForDay(day);
-    const isReminderOn = reminder?.is_enabled ?? false;
-
     return (
       <View key={day}>
         <View style={styles.accordionItem}>
           <View style={styles.accordionHeader}>
-            <TouchableOpacity
-              style={styles.accordionTitleWrap}
-              onPress={() => toggleAccordion(day)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.accordionTitle}>
-                {day} ({workouts.length})
-              </Text>
-              {isReminderOn && reminder?.reminder_time && (
-                <View style={styles.reminderBadge}>
-                  <Ionicons name="notifications" size={12} color="#32CD32" />
-                  <Text style={styles.reminderBadgeText}>
-                    {formatTime(reminder.reminder_time)}
-                  </Text>
-                </View>
-              )}
+            <Text style={styles.accordionTitle}>
+              {day} ({workouts.length})
+            </Text>
+            <TouchableOpacity onPress={() => toggleAccordion(day)}>
+              <Ionicons
+                name={expandedDays[day] ? "chevron-up" : "chevron-down"}
+                size={24}
+                color="#32CD32"
+              />
             </TouchableOpacity>
-
-            <View style={styles.accordionHeaderRight}>
-              {!isUnassigned && workouts.length > 0 && (
-                <Switch
-                  value={isReminderOn}
-                  onValueChange={(value) => handleReminderToggle(day, value)}
-                  trackColor={{ false: "#444", true: "#2a5c2a" }}
-                  thumbColor={isReminderOn ? "#32CD32" : "#888"}
-                  style={styles.reminderSwitch}
-                />
-              )}
-              <TouchableOpacity onPress={() => toggleAccordion(day)}>
-                <Ionicons
-                  name={expandedDays[day] ? "chevron-up" : "chevron-down"}
-                  size={24}
-                  color="#32CD32"
-                />
-              </TouchableOpacity>
-            </View>
           </View>
 
           {expandedDays[day] && (
@@ -262,12 +252,11 @@ const WorkoutListsScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.screen}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.logoutButton}   onPress={() => router.push("/Screen/Plans/PlansScreen")}>
-            <FontAwesome5
-              name="crown"
-              size={28}
-              color="#EFBF04"
-            />
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={() => router.push("/Screen/Plans/PlansScreen")}
+          >
+            <FontAwesome5 name="crown" size={28} color="#EFBF04" />
           </TouchableOpacity>
 
           <View style={styles.headerCenter}>
@@ -280,6 +269,37 @@ const WorkoutListsScreen = () => {
             <AntDesign name="logout" size={24} color="#ff4444" />
           </TouchableOpacity>
         </View>
+
+        {/* Single reminder toggle — only shown when there's at least one day with workouts */}
+        {activeDays.length > 0 && (
+          <View style={styles.reminderBar}>
+            <View style={styles.reminderBarLeft}>
+              <Ionicons
+                name={isReminderOn ? "notifications" : "notifications-outline"}
+                size={20}
+                color="#32CD32"
+              />
+              <View style={{ marginLeft: 10 }}>
+                <Text style={styles.reminderBarTitle}>Workout Reminders</Text>
+                <Text style={styles.reminderBarSubtitle}>
+                  {isReminderOn && setting?.reminder_time
+                    ? `On at ${formatTime(setting.reminder_time)} · ${activeDays.length} ${
+                        activeDays.length === 1 ? "day" : "days"
+                      }`
+                    : `Get notified on your ${activeDays.length} workout ${
+                        activeDays.length === 1 ? "day" : "days"
+                      }`}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={isReminderOn}
+              onValueChange={handleReminderToggle}
+              trackColor={{ false: "#444", true: "#2a5c2a" }}
+              thumbColor={isReminderOn ? "#32CD32" : "#888"}
+            />
+          </View>
+        )}
 
         {workoutLoading ? (
           <View style={styles.loadingState}>
@@ -307,13 +327,11 @@ const WorkoutListsScreen = () => {
             }
             showsVerticalScrollIndicator={false}
           >
-            {/* Unassigned workouts first */}
             {groupedWorkouts.Unassigned.length > 0 && (
               <View style={styles.unassignedSection}>
                 {renderAccordion("Unassigned", groupedWorkouts.Unassigned)}
               </View>
             )}
-            {/* Then each day of the week */}
             {DAYS_OF_WEEK.map((day) =>
               renderAccordion(day, groupedWorkouts[day]),
             )}
@@ -321,7 +339,6 @@ const WorkoutListsScreen = () => {
         )}
       </View>
 
-      {/* Day Picker Modal */}
       <Modal
         visible={modalVisible}
         transparent={true}
@@ -350,20 +367,18 @@ const WorkoutListsScreen = () => {
         </View>
       </Modal>
 
-      {/* Reminder Time Picker Modal */}
-      {timePickerDay && (
+      {showTimePicker && (
         <TimePickerModal
-          visible={!!timePickerDay}
-          dayOfWeek={timePickerDay}
+          visible={showTimePicker}
+        dayOfWeek={activeDays.join(", ")}
           onConfirm={handleTimeConfirm}
-          onCancel={() => setTimePickerDay(null)}
+          onCancel={() => setShowTimePicker(false)}
         />
       )}
     </SafeAreaView>
   );
 };
 
-// helper to format "18:00:00" -> "6:00 PM"
 function formatTime(time: string) {
   const [hourStr, minuteStr] = time.split(":");
   const hour = parseInt(hourStr, 10);
@@ -378,14 +393,8 @@ const useStyles = createThemedStyles((_, responsive) => {
   const imageSize = wp(50);
 
   return StyleSheet.create({
-    safeArea: {
-      flex: 1,
-      backgroundColor: "#000",
-    },
-    screen: {
-      flex: 1,
-      backgroundColor: "#000",
-    },
+    safeArea: { flex: 1, backgroundColor: "#000" },
+    screen: { flex: 1, backgroundColor: "#000" },
     header: {
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.md,
@@ -398,13 +407,7 @@ const useStyles = createThemedStyles((_, responsive) => {
       width: "100%",
       alignSelf: "center",
     },
-    headerSpacer: {
-      width: ms(60),
-    },
-    headerCenter: {
-      flex: 1,
-      alignItems: "center",
-    },
+    headerCenter: { flex: 1, alignItems: "center" },
     title: {
       fontSize: fontSizes.xl,
       fontWeight: "bold",
@@ -421,6 +424,34 @@ const useStyles = createThemedStyles((_, responsive) => {
       padding: spacing.sm,
       backgroundColor: "#2a2a2a",
       borderRadius: radius.md,
+    },
+    reminderBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: "#1a1a1a",
+      marginHorizontal: spacing.md,
+      marginTop: spacing.md,
+      padding: spacing.md,
+      borderRadius: radius.lg,
+      maxWidth: containerMaxWidth,
+      width: `calc(100% - ${spacing.md * 2}px)` as any,
+      alignSelf: "center",
+    },
+    reminderBarLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      flex: 1,
+    },
+    reminderBarTitle: {
+      color: "#fff",
+      fontWeight: "600",
+      fontSize: fontSizes.md,
+    },
+    reminderBarSubtitle: {
+      color: "#999",
+      fontSize: fontSizes.xs,
+      marginTop: 2,
     },
     loadingState: {
       flex: 1,
@@ -464,27 +495,6 @@ const useStyles = createThemedStyles((_, responsive) => {
       padding: spacing.md,
       borderRadius: radius.lg,
     },
-    accordionTitleWrap: {
-      flex: 1,
-    },
-    accordionHeaderRight: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: spacing.sm,
-    },
-    reminderSwitch: {
-      transform: [{ scaleX: 0.85 }, { scaleY: 0.85 }],
-    },
-    reminderBadge: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginTop: spacing.xxs,
-      gap: 4,
-    },
-    reminderBadgeText: {
-      fontSize: fontSizes.xs,
-      color: "#32CD32",
-    },
     accordionItem: {
       backgroundColor: "#1a1a1a",
       padding: spacing.sm,
@@ -496,9 +506,7 @@ const useStyles = createThemedStyles((_, responsive) => {
       fontWeight: "bold",
       color: "#fff",
     },
-    accordionContent: {
-      marginBottom: spacing.md,
-    },
+    accordionContent: { marginBottom: spacing.md },
     rowCard: {
       flexDirection: "row",
       backgroundColor: "#2a2a2a",
@@ -514,35 +522,17 @@ const useStyles = createThemedStyles((_, responsive) => {
       overflow: "hidden",
       marginRight: spacing.md,
     },
-    rowImage: {
-      width: "100%",
-      height: "100%",
-      backgroundColor: "#1a1a1a",
-    },
+    rowImage: { width: "100%", height: "100%", backgroundColor: "#1a1a1a" },
     rowName: {
       fontSize: fontSizes.lg,
       fontWeight: "600",
       color: "#fff",
       marginBottom: spacing.xxs,
     },
-    rowMeta: {
-      fontSize: fontSizes.sm,
-      color: "#32CD32",
-      marginBottom: spacing.xxs,
-    },
-    rowTarget: {
-      fontSize: fontSizes.sm,
-      color: "#999",
-    },
+    rowTarget: { fontSize: fontSizes.sm, color: "#999" },
     deleteButton: {
       padding: spacing.xs,
       backgroundColor: "red",
-      borderRadius: radius.lg,
-      marginLeft: spacing.xs,
-    },
-    editDayButton: {
-      padding: spacing.xs,
-      backgroundColor: "#32CD32",
       borderRadius: radius.lg,
       marginLeft: spacing.xs,
     },
@@ -573,10 +563,7 @@ const useStyles = createThemedStyles((_, responsive) => {
       marginBottom: spacing.sm,
       alignItems: "center",
     },
-    dayButtonText: {
-      fontSize: fontSizes.md,
-      color: "#fff",
-    },
+    dayButtonText: { fontSize: fontSizes.md, color: "#fff" },
     closeModalButton: {
       padding: spacing.md,
       backgroundColor: "#444",
@@ -584,13 +571,8 @@ const useStyles = createThemedStyles((_, responsive) => {
       marginTop: spacing.md,
       alignItems: "center",
     },
-    closeModalButtonText: {
-      fontSize: fontSizes.md,
-      color: "#fff",
-    },
-    unassignedSection: {
-      marginBottom: spacing.md,
-    },
+    closeModalButtonText: { fontSize: fontSizes.md, color: "#fff" },
+    unassignedSection: { marginBottom: spacing.md },
   });
 });
 

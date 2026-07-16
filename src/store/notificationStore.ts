@@ -9,61 +9,66 @@ import { create } from "zustand";
 
 const getAuthStore = () => require("./authStore").useAuthStore;
 
-export interface WorkoutReminderType {
+export interface WorkoutReminderSetting {
   id: number;
   user_id: string;
-  day_of_week: string;
-  reminder_time: string;
   is_enabled: boolean;
-  notification_id: string | null;
-  created_at?: string;
+  reminder_time: string | null; // "18:00:00"
+  notification_ids: Record<string, string>; // { Monday: "abc-id", Wednesday: "def-id" }
 }
 
 interface NotificationState {
-  reminders: WorkoutReminderType[];
+  setting: WorkoutReminderSetting | null;
   loading: boolean;
   error: string | null;
-  fetchReminders: () => Promise<void>;
-  toggleDayReminder: (
-    dayOfWeek: string,
+  fetchReminderSetting: () => Promise<void>;
+  enableReminder: (
     hour: number,
     minute: number,
+    activeDays: string[],
   ) => Promise<boolean>;
-  disableDayReminder: (dayOfWeek: string) => Promise<void>;
-  clearReminders: () => void;
+  disableReminder: () => Promise<void>;
+  syncReminderDays: (activeDays: string[]) => Promise<void>;
+  clearReminderSetting: () => void;
 }
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
-  reminders: [],
+  setting: null,
   loading: false,
   error: null,
 
-  fetchReminders: async () => {
+  fetchReminderSetting: async () => {
     const user = getAuthStore().getState().user;
     if (!user) {
-      set({ reminders: [], loading: false, error: null });
+      set({ setting: null, loading: false, error: null });
       return;
     }
 
     set({ loading: true, error: null });
     try {
       const { data, error } = await supabase
-        .from("workout_reminders")
+        .from("workout_reminder_settings")
         .select("*")
         .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+        .maybeSingle();
 
       if (error) throw error;
-      set({ reminders: (data ?? []) as WorkoutReminderType[], loading: false });
+      set({
+        setting: data
+          ? { ...data, notification_ids: data.notification_ids || {} }
+          : null,
+        loading: false,
+      });
     } catch (error: any) {
-      console.error("Error fetching reminders:", error);
-      set({ error: error.message ?? "Failed to load reminders", loading: false });
+      console.error("Error fetching reminder setting:", error);
+      set({ error: error.message ?? "Failed to load reminder", loading: false });
     }
   },
 
-  toggleDayReminder: async (dayOfWeek: string, hour: number, minute: number) => {
+  enableReminder: async (hour: number, minute: number, activeDays: string[]) => {
     const user = getAuthStore().getState().user;
     if (!user) return false;
+    if (activeDays.length === 0) return false;
 
     const granted = await requestNotificationPermissions();
     if (!granted) {
@@ -74,17 +79,23 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       return false;
     }
 
-    const existing = get().reminders.find((r) => r.day_of_week === dayOfWeek);
-    if (existing?.notification_id) {
-      await cancelReminder(existing.notification_id);
+    // cancel any previously scheduled notifications first
+    const existing = get().setting;
+    if (existing?.notification_ids) {
+      await Promise.all(
+        Object.values(existing.notification_ids).map((id) => cancelReminder(id)),
+      );
     }
 
-    const notificationId = await scheduleDayReminder(dayOfWeek, hour, minute);
-    if (!notificationId) {
-      Alert.alert(
-        "Unable to Schedule",
-        "We could not create the reminder notification. Please try again.",
-      );
+    // schedule one notification per active day
+    const notification_ids: Record<string, string> = {};
+    for (const day of activeDays) {
+      const id = await scheduleDayReminder(day, hour, minute);
+      if (id) notification_ids[day] = id;
+    }
+
+    if (Object.keys(notification_ids).length === 0) {
+      Alert.alert("Unable to Schedule", "We could not create your reminders.");
       return false;
     }
 
@@ -92,79 +103,77 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       .toString()
       .padStart(2, "0")}:00`;
 
-    const { data: existingRows, error: fetchError } = await supabase
-      .from("workout_reminders")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("day_of_week", dayOfWeek)
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    if (fetchError) {
-      console.error("Error checking existing reminder:", fetchError);
-      Alert.alert(
-        "Save Failed",
-        "We scheduled the notification, but could not check your saved reminder.",
-      );
-      return false;
-    }
-
-    const reminderPayload = {
+    const payload = {
       user_id: user.id,
-      day_of_week: dayOfWeek,
-      reminder_time,
       is_enabled: true,
-      notification_id: notificationId,
+      reminder_time,
+      notification_ids,
     };
 
-    const existingReminder = existingRows?.[0];
-    const { error } = existingReminder?.id
-      ? await supabase
-          .from("workout_reminders")
-          .update(reminderPayload)
-          .eq("id", existingReminder.id)
-      : await supabase.from("workout_reminders").insert(reminderPayload);
+    const { error } = await supabase
+      .from("workout_reminder_settings")
+      .upsert(payload, { onConflict: "user_id" });
 
     if (error) {
-      console.error("Error saving reminder:", error);
-      Alert.alert(
-        "Save Failed",
-        "We scheduled the notification, but could not save it to your account.",
-      );
+      console.error("Error saving reminder setting:", error);
+      Alert.alert("Save Failed", "We scheduled it, but couldn't save it.");
       return false;
     }
 
-    await get().fetchReminders();
+    await get().fetchReminderSetting();
     return true;
   },
 
-  disableDayReminder: async (dayOfWeek: string) => {
+  disableReminder: async () => {
     const user = getAuthStore().getState().user;
     if (!user) return;
 
-    const existing = get().reminders.find((r) => r.day_of_week === dayOfWeek);
-    if (existing?.notification_id) {
-      await cancelReminder(existing.notification_id);
+    const existing = get().setting;
+    if (existing?.notification_ids) {
+      await Promise.all(
+        Object.values(existing.notification_ids).map((id) => cancelReminder(id)),
+      );
     }
 
     const { error } = await supabase
-      .from("workout_reminders")
-      .update({ is_enabled: false, notification_id: null })
-      .eq("user_id", user.id)
-      .eq("day_of_week", dayOfWeek);
+      .from("workout_reminder_settings")
+      .update({ is_enabled: false, notification_ids: {} })
+      .eq("user_id", user.id);
 
     if (error) {
       console.error("Error disabling reminder:", error);
-      Alert.alert(
-        "Update Failed",
-        "We could not turn off this reminder right now.",
-      );
+      Alert.alert("Update Failed", "We could not turn off your reminder.");
       return;
     }
 
-    await get().fetchReminders();
+    await get().fetchReminderSetting();
   },
 
-  clearReminders: () =>
-    set({ reminders: [], loading: false, error: null }),
+  // Call this whenever workoutList's set of active days changes,
+  // so a currently-enabled reminder stays in sync (e.g. user adds/removes a day)
+  syncReminderDays: async (activeDays: string[]) => {
+    const existing = get().setting;
+    if (!existing?.is_enabled || !existing.reminder_time) return;
+
+    const currentDays = Object.keys(existing.notification_ids || {});
+    const sameSet =
+      currentDays.length === activeDays.length &&
+      currentDays.every((d) => activeDays.includes(d));
+    if (sameSet) return; // nothing changed
+
+    if (activeDays.length === 0) {
+      // no workout days left at all -> turn off
+      await get().disableReminder();
+      return;
+    }
+
+    const [hourStr, minuteStr] = existing.reminder_time.split(":");
+    await get().enableReminder(
+      parseInt(hourStr, 10),
+      parseInt(minuteStr, 10),
+      activeDays,
+    );
+  },
+
+  clearReminderSetting: () => set({ setting: null, loading: false, error: null }),
 }));
