@@ -22,6 +22,7 @@ GoogleSignin.configure({
 // Lazy import to avoid require cycle
 const getDataStore = () => require("./dataStore").useDataStore;
 const getProfileStore = () => require("./profileStore").useProfileStore;
+const getNotificationStore = () => require("./notificationStore").useNotificationStore;
 
 interface AuthState {
   session: Session | null;
@@ -65,6 +66,7 @@ export const useAuthStore = create<AuthState>()(
               try {
                 getDataStore().getState().fetchWorkoutList();
                 getProfileStore().getState().fetchProfile();
+                getNotificationStore().getState().fetchReminders();
               } catch (e) {
                 console.error("Error initializing data/profile:", e);
               }
@@ -84,6 +86,7 @@ export const useAuthStore = create<AuthState>()(
             try {
               getDataStore().getState().fetchWorkoutList();
               getProfileStore().getState().fetchProfile();
+              getNotificationStore().getState().fetchReminders();
             } catch (e) {
               console.error("Error in auth state change:", e);
             }
@@ -91,6 +94,7 @@ export const useAuthStore = create<AuthState>()(
             try {
               getDataStore().setState({ workoutList: [] });
               getProfileStore().getState().clearProfile();
+              getNotificationStore().getState().clearReminders();
             } catch (e) {
               console.error("Error clearing data:", e);
             }
@@ -236,6 +240,7 @@ export const useAuthStore = create<AuthState>()(
           }
           set({ session: null, user: null });
           getProfileStore().getState().clearProfile();
+          getNotificationStore().getState().clearReminders();
         } catch (error) {
           console.error("Sign out error:", error);
         } finally {

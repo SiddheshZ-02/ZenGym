@@ -1,6 +1,7 @@
 import { createThemedStyles, getResWidth } from "@/constants/responsive";
 import { useAuthStore } from "@/store/authStore";
 import { useDataStore } from "@/store/dataStore";
+import { useNotificationStore } from "@/store/notificationStore";
 import { showToast } from "@/utils/toast";
 import {
   MaterialIcons,
@@ -11,7 +12,7 @@ import {
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -23,8 +24,10 @@ import {
   View,
   Modal,
   ScrollView,
+  Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import TimePickerModal from "@/components/TimePickerModal";
 
 const DAYS_OF_WEEK = [
   "Monday",
@@ -44,6 +47,12 @@ const WorkoutListsScreen = () => {
     fetchWorkoutList,
     setExerciseDay,
   } = useDataStore();
+  const {
+    reminders,
+    fetchReminders,
+    toggleDayReminder,
+    disableDayReminder,
+  } = useNotificationStore();
   const { signOut } = useAuthStore();
   const router = useRouter();
   const styles = useStyles();
@@ -52,6 +61,11 @@ const WorkoutListsScreen = () => {
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState<any>(null);
+  const [timePickerDay, setTimePickerDay] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchReminders();
+  }, []);
 
   // Group workouts by day of week
   const groupWorkoutsByDay = () => {
@@ -74,6 +88,7 @@ const WorkoutListsScreen = () => {
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchWorkoutList();
+    await fetchReminders();
     setRefreshing(false);
   };
 
@@ -111,6 +126,29 @@ const WorkoutListsScreen = () => {
     }
     setModalVisible(false);
     setSelectedExercise(null);
+  };
+
+  const getReminderForDay = (day: string) =>
+    reminders.find((r) => r.day_of_week === day);
+
+  const handleReminderToggle = async (day: string, value: boolean) => {
+    if (value) {
+      setTimePickerDay(day);
+    } else {
+      await disableDayReminder(day);
+      showToast("success", `Reminder turned off for ${day}`);
+    }
+  };
+
+  const handleTimeConfirm = async (hour: number, minute: number) => {
+    if (!timePickerDay) return;
+    const success = await toggleDayReminder(timePickerDay, hour, minute);
+    if (success) {
+      showToast("success", `Reminder set for ${timePickerDay}!`);
+    } else {
+      showToast("error", "Couldn't set reminder. Check notification permissions.");
+    }
+    setTimePickerDay(null);
   };
 
   const renderWorkoutItem = ({ item }: { item: any }) => (
@@ -155,20 +193,50 @@ const WorkoutListsScreen = () => {
   const renderAccordion = (day: string, workouts: any[]) => {
     if (workouts.length === 0 && day !== "Unassigned") return null;
 
+    const isUnassigned = day === "Unassigned";
+    const reminder = getReminderForDay(day);
+    const isReminderOn = reminder?.is_enabled ?? false;
+
     return (
       <View key={day}>
         <View style={styles.accordionItem}>
           <View style={styles.accordionHeader}>
-            <Text style={styles.accordionTitle}>
-              {day} ({workouts.length})
-            </Text>
-            <TouchableOpacity onPress={() => toggleAccordion(day)}>
-              <Ionicons
-                name={expandedDays[day] ? "chevron-up" : "chevron-down"}
-                size={24}
-                color="#32CD32"
-              />
+            <TouchableOpacity
+              style={styles.accordionTitleWrap}
+              onPress={() => toggleAccordion(day)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.accordionTitle}>
+                {day} ({workouts.length})
+              </Text>
+              {isReminderOn && reminder?.reminder_time && (
+                <View style={styles.reminderBadge}>
+                  <Ionicons name="notifications" size={12} color="#32CD32" />
+                  <Text style={styles.reminderBadgeText}>
+                    {formatTime(reminder.reminder_time)}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
+
+            <View style={styles.accordionHeaderRight}>
+              {!isUnassigned && workouts.length > 0 && (
+                <Switch
+                  value={isReminderOn}
+                  onValueChange={(value) => handleReminderToggle(day, value)}
+                  trackColor={{ false: "#444", true: "#2a5c2a" }}
+                  thumbColor={isReminderOn ? "#32CD32" : "#888"}
+                  style={styles.reminderSwitch}
+                />
+              )}
+              <TouchableOpacity onPress={() => toggleAccordion(day)}>
+                <Ionicons
+                  name={expandedDays[day] ? "chevron-up" : "chevron-down"}
+                  size={24}
+                  color="#32CD32"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {expandedDays[day] && (
@@ -281,9 +349,29 @@ const WorkoutListsScreen = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Reminder Time Picker Modal */}
+      {timePickerDay && (
+        <TimePickerModal
+          visible={!!timePickerDay}
+          dayOfWeek={timePickerDay}
+          onConfirm={handleTimeConfirm}
+          onCancel={() => setTimePickerDay(null)}
+        />
+      )}
     </SafeAreaView>
   );
 };
+
+// helper to format "18:00:00" -> "6:00 PM"
+function formatTime(time: string) {
+  const [hourStr, minuteStr] = time.split(":");
+  const hour = parseInt(hourStr, 10);
+  const minute = parseInt(minuteStr, 10);
+  const period = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+  return `${displayHour}:${minute.toString().padStart(2, "0")} ${period}`;
+}
 
 const useStyles = createThemedStyles((_, responsive) => {
   const { spacing, radius, fontSizes, ms, wp, containerMaxWidth } = responsive;
@@ -375,12 +463,29 @@ const useStyles = createThemedStyles((_, responsive) => {
       backgroundColor: "#1a1a1a",
       padding: spacing.md,
       borderRadius: radius.lg,
-      // marginBottom: spacing.sm,
+    },
+    accordionTitleWrap: {
+      flex: 1,
+    },
+    accordionHeaderRight: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+    },
+    reminderSwitch: {
+      transform: [{ scaleX: 0.85 }, { scaleY: 0.85 }],
+    },
+    reminderBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: spacing.xxs,
+      gap: 4,
+    },
+    reminderBadgeText: {
+      fontSize: fontSizes.xs,
+      color: "#32CD32",
     },
     accordionItem: {
-      // flexDirection: "row",
-      // justifyContent: "space-between",
-      // alignItems: "center",
       backgroundColor: "#1a1a1a",
       padding: spacing.sm,
       borderRadius: radius.lg,

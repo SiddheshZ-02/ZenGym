@@ -230,6 +230,11 @@ const useStyles = createThemedStyles((_, responsive) => {
       color: "#32CD32",
       marginBottom: spacing.xs,
     },
+    infoText: {
+      fontSize: fontSizes.md,
+      color: "#32CD32",
+      marginBottom: spacing.xs,
+    },
     infoBody: {
       fontSize: fontSizes.md,
       color: "white",
@@ -306,6 +311,8 @@ const ExerciseDetailsScreen = () => {
   const { exercisesDetails } = useLocalSearchParams();
   const { workoutList, addExerciseToWorkout, fetchExerciseById } =
     useDataStore();
+
+  // console.log("data", info)
   const styles = useStyles();
 
   const [isGifPlaying, setIsGifPlaying] = useState(true);
@@ -471,7 +478,7 @@ const ExerciseDetailsScreen = () => {
             <MaterialIcons
               name={isExerciseInList ? "check-circle" : "add-circle-outline"}
               size={28}
-              color={isExerciseInList ? "black" : "black"}
+              color={isExerciseInList ? "#32CD32" : "#32CD32"}
             />
           </TouchableOpacity>
         </View>
@@ -582,27 +589,86 @@ const ExerciseDetailsScreen = () => {
               </View>
             </View>
 
-            {info.equipment && (
+            
+            {info.equipment && Array.isArray(info.equipment) && (
               <View style={styles.infoCard}>
-                <Text style={styles.infoTitle}>Equipment Needed</Text>
-                <Text style={styles.infoBody}>{info.equipment}</Text>
+                <Text style={styles.infoTitle}>Equipment</Text>
+                {info.equipment.map((data, index) => (
+                  <View key={index} style={styles.instructionRow}>
+                    <Text style={styles.instructionIndex}>•</Text>
+                    <Text style={styles.instructionText}>{data}</Text>
+                  </View>
+                ))}
               </View>
             )}
-
-            {info.description && (
-              <View style={styles.infoCard}>
-                <Text style={styles.infoTitle}>Description</Text>
-                <Text style={styles.infoBody}>{info.description}</Text>
-              </View>
-            )}
+            
 
             {info.instructions && Array.isArray(info.instructions) && (
               <View style={styles.infoCard}>
                 <Text style={styles.infoTitle}>Instructions</Text>
-                {info.instructions.map((instruction, index) => (
+                {info.instructions.map((data, index) => (
                   <View key={index} style={styles.instructionRow}>
                     <Text style={styles.instructionIndex}>{index + 1}.</Text>
-                    <Text style={styles.instructionText}>{instruction}</Text>
+                    <Text style={styles.instructionText}>{data}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+            {info.common_mistakes && Array.isArray(info.common_mistakes) && (
+              <View style={styles.infoCard}>
+                <Text style={styles.infoTitle}>Common Mistakes</Text>
+                {info.common_mistakes.map((data, index) => (
+                  <View key={index} style={styles.instructionRow}>
+                    <Text style={styles.instructionIndex}>{index + 1}.</Text>
+                    <Text style={styles.instructionText}>{data}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+            {info.trainer_tips && Array.isArray(info.trainer_tips) && (
+              <View style={styles.infoCard}>
+                <Text style={styles.infoTitle}>Trainer Tips</Text>
+                {info.trainer_tips.map((data, index) => (
+                  <View key={index} style={styles.instructionRow}>
+                    <Text style={styles.instructionIndex}>{index + 1}.</Text>
+                    <Text style={styles.instructionText}>{data}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {info.breathing && (
+              <View style={styles.infoCard}>
+                <Text style={styles.infoTitle}>Breathing</Text>
+                <Text style={styles.infoBody}>{info.breathing.lift}</Text>
+                <Text style={styles.infoBody}>{info.breathing.lower}</Text>
+              </View>
+            )}
+            {info.recommended_sets && (
+              <View style={styles.infoCard}>
+                <Text style={styles.infoTitle}>Recommended Sets</Text>
+                <Text style={styles.infoBody}>
+                  <Text style={styles.infoText}>Beginner : </Text>{" "}
+                  {info.recommended_sets.beginner}
+                </Text>
+                <Text style={styles.infoBody}>
+                  <Text style={styles.infoText}>Intermediate : </Text>{" "}
+                  {info.recommended_sets.intermediate}
+                </Text>
+                <Text style={styles.infoBody}>
+                  <Text style={styles.infoText}>Advance : </Text>{" "}
+                  {info.recommended_sets.advanced}
+                </Text>
+              </View>
+            )}
+
+            {info.safety_notes && Array.isArray(info.safety_notes) && (
+              <View style={styles.infoCard}>
+                <Text style={styles.infoTitle}>Safety Notes</Text>
+                {info.safety_notes.map((data, index) => (
+                  <View key={index} style={styles.instructionRow}>
+                    <Text style={styles.instructionIndex}>{index + 1}.</Text>
+                    <Text style={styles.instructionText}>{data}</Text>
                   </View>
                 ))}
               </View>

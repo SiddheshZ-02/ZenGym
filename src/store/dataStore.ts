@@ -13,6 +13,17 @@ export interface BodyPartType {
   image?: any;
 }
 
+export interface BreathingType {
+  lift?: string;
+  lower?: string;
+}
+
+export interface RecommendedSetsType {
+  beginner?: string;
+  intermediate?: string;
+  advanced?: string;
+}
+
 export interface ExerciseType {
   id: number;
   name: string;
@@ -20,7 +31,7 @@ export interface ExerciseType {
   gifUrl?: any;
   category?: string;
   difficulty?: string;
-  equipment?: string;
+  equipment?: string[];
   description?: string;
   target?: string;
   instructions?: string[];
@@ -28,6 +39,12 @@ export interface ExerciseType {
   bodyPart?: string;
   secondary_muscles?: string[];
   secondaryMuscles?: any;
+  primary_muscles?: string[];
+  common_mistakes?: string[];
+  trainer_tips?: string[];
+  breathing?: BreathingType;
+  recommended_sets?: RecommendedSetsType;
+  safety_notes?: string[];
 }
 
 export interface WorkoutExerciseType {
@@ -36,11 +53,18 @@ export interface WorkoutExerciseType {
   gifUrl: any;
   category: string;
   difficulty: string;
-  equipment: string;
+  equipment: string[];
   description: string;
   target: string;
   instructions: string[];
   bodyPart: string;
+  secondaryMuscles: string[];
+  primaryMuscles: string[];
+  commonMistakes: string[];
+  trainerTips: string[];
+  breathing: BreathingType;
+  recommendedSets: RecommendedSetsType;
+  safetyNotes: string[];
   dayOfWeek?: string;
 }
 
@@ -163,7 +187,14 @@ export const useDataStore = create<DataState>((set, get) => ({
             description,
             target,
             instructions,
-            body_part
+            body_part,
+            secondary_muscles,
+            primary_muscles,
+            common_mistakes,
+            trainer_tips,
+            breathing,
+            recommended_sets,
+            safety_notes
           )
         `,
         )
@@ -178,13 +209,32 @@ export const useDataStore = create<DataState>((set, get) => ({
         gifUrl: item.exercises.gif_url,
         category: item.exercises.category || "",
         difficulty: item.exercises.difficulty || "",
-        equipment: item.exercises.equipment || "",
+        equipment: Array.isArray(item.exercises.equipment)
+          ? item.exercises.equipment
+          : [],
         description: item.exercises.description || "",
         target: item.exercises.target || "",
         instructions: Array.isArray(item.exercises.instructions)
           ? item.exercises.instructions
           : [],
         bodyPart: item.exercises.body_part || "",
+        secondaryMuscles: Array.isArray(item.exercises.secondary_muscles)
+          ? item.exercises.secondary_muscles
+          : [],
+        primaryMuscles: Array.isArray(item.exercises.primary_muscles)
+          ? item.exercises.primary_muscles
+          : [],
+        commonMistakes: Array.isArray(item.exercises.common_mistakes)
+          ? item.exercises.common_mistakes
+          : [],
+        trainerTips: Array.isArray(item.exercises.trainer_tips)
+          ? item.exercises.trainer_tips
+          : [],
+        breathing: item.exercises.breathing || {},
+        recommendedSets: item.exercises.recommended_sets || {},
+        safetyNotes: Array.isArray(item.exercises.safety_notes)
+          ? item.exercises.safety_notes
+          : [],
         dayOfWeek: item.day_of_week,
       }));
 

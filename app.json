@@ -42,6 +42,7 @@
           "backgroundColor": "#000000"
         }
       ],
+      "expo-notifications",
       [
         "expo-image-picker",
         {
@@ -49,7 +50,8 @@
           "cameraPermission": "Allow ZenGym to use the camera for your profile picture."
         }
       ],
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true
