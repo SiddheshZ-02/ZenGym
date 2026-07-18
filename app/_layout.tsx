@@ -1,16 +1,19 @@
 import NetworkStatusAlert from "@/components/NetworkStatusAlert";
 import { AppSystemProvider } from "@/constants/responsive";
 import { useAuthStore } from "@/store/authStore";
-import { Stack } from "expo-router";
+import * as NavigationBar from "expo-navigation-bar";
+import * as Notifications from "expo-notifications";
+import { router, Stack } from "expo-router";
 import React, { Component, ReactNode, useEffect, useRef } from "react";
-import { AppState, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  AppState,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
-import * as NavigationBar from "expo-navigation-bar";
-
-
-
-
 
 // Root Error Boundary
 class ErrorBoundary extends Component<
@@ -29,8 +32,6 @@ class ErrorBoundary extends Component<
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("Root Error Boundary caught an error:", error, errorInfo);
   }
-
-  
 
   render() {
     if (this.state.hasError) {
@@ -89,13 +90,14 @@ const errorStyles = StyleSheet.create({
 const App = () => {
   const { initializeAuth } = useAuthStore();
   const appState = useRef(AppState.currentState);
+  const notificationSub = useRef<any>(null);
 
   useEffect(() => {
     // Global error handler to catch "Unable to activate keep awake"
     const originalError = console.error;
     console.error = (...args: any[]) => {
-      const errorMessage = args.join(' ');
-      if (errorMessage.includes('Unable to activate keep awake')) {
+      const errorMessage = args.join(" ");
+      if (errorMessage.includes("Unable to activate keep awake")) {
         // Ignore this specific error
         return;
       }
@@ -108,7 +110,7 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', nextAppState => {
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
       appState.current = nextAppState;
     });
 
@@ -118,8 +120,55 @@ const App = () => {
   }, []);
 
   useEffect(() => {
+    // Handle tapping on a notification to deep-link into the app
+    (async () => {
+      try {
+        const last = await Notifications.getLastNotificationResponse();
+        if (last?.notification) {
+          const rawDay = last.notification.request.content.data?.day;
+          const day =
+            typeof rawDay === "string" || typeof rawDay === "number"
+              ? rawDay
+              : undefined;
+          if (day != null)
+            router.push({
+              pathname: "/TabNavigation/WorkoutListsScreen",
+              params: { day },
+            });
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      notificationSub.current =
+        Notifications.addNotificationResponseReceivedListener((response) => {
+          const rawDay = response.notification.request.content.data?.day;
+          const day =
+            typeof rawDay === "string" || typeof rawDay === "number"
+              ? rawDay
+              : undefined;
+          if (day != null)
+            router.push({
+              pathname: "/TabNavigation/WorkoutListsScreen",
+              params: { day },
+            });
+          else router.push("/TabNavigation/WorkoutListsScreen");
+        });
+    })();
+
     return initializeAuth();
   }, [initializeAuth]);
+
+  // cleanup listener on unmount
+  useEffect(() => {
+    return () => {
+      try {
+        notificationSub.current?.remove?.();
+      } catch (e) {
+        // noop
+      }
+    };
+  }, []);
 
   useEffect(() => {
     async function setupNavigationBar() {

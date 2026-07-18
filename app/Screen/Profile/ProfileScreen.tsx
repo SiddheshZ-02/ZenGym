@@ -2,7 +2,7 @@ import { createThemedStyles } from "@/constants/responsive";
 import { useAuthStore } from "@/store/authStore";
 import { useProfileStore } from "@/store/profileStore";
 import { showToast } from "@/utils/toast";
-import { AntDesign, Ionicons } from "@expo/vector-icons";
+import { AntDesign, Feather, Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
@@ -316,7 +316,7 @@ const ProfileScreen = () => {
             style={styles.headerSpacer}
             onPress={() => router.back()}
           >
-            <AntDesign name="arrow-left" size={24} color="#fff" />
+            <Feather name="chevron-left" size={30} color="#32CD32" />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>My Profile</Text>

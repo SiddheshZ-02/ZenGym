@@ -2,7 +2,8 @@ import { Platform } from "react-native";
 
 type NotificationsModule = typeof import("expo-notifications");
 
-let notificationsModulePromise: Promise<NotificationsModule | null> | null = null;
+let notificationsModulePromise: Promise<NotificationsModule | null> | null =
+  null;
 
 async function getNotificationsModule(): Promise<NotificationsModule | null> {
   if (!notificationsModulePromise) {
@@ -10,7 +11,6 @@ async function getNotificationsModule(): Promise<NotificationsModule | null> {
       .then((Notifications) => {
         Notifications.setNotificationHandler({
           handleNotification: async () => ({
-            shouldShowAlert: true,
             shouldPlaySound: true,
             shouldSetBadge: false,
             shouldShowBanner: true,
@@ -20,7 +20,10 @@ async function getNotificationsModule(): Promise<NotificationsModule | null> {
         return Notifications;
       })
       .catch((error) => {
-        console.warn("expo-notifications is unavailable in this runtime:", error);
+        console.warn(
+          "expo-notifications is unavailable in this runtime:",
+          error,
+        );
         return null;
       });
   }
@@ -76,12 +79,30 @@ export async function scheduleDayReminder(
   if (!weekday) return null;
 
   try {
+    const content = {
+      title: "Workout Reminder",
+      body: `Time for your ${dayOfWeek} workout!`,
+      sound: true,
+      data: { day: dayOfWeek },
+    };
+
+    // Use Android-specific weekly trigger and iOS calendar trigger
+    if (Platform.OS === "android") {
+      const id = await Notifications.scheduleNotificationAsync({
+        content,
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+          weekday,
+          hour,
+          minute,
+          channelId: "default",
+        },
+      });
+      return id;
+    }
+
     const id = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: "Workout Reminder",
-        body: `Time for your ${dayOfWeek} workout!`,
-        sound: true,
-      },
+      content,
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
         weekday,
