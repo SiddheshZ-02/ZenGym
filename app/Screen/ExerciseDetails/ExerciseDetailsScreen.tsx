@@ -25,7 +25,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 // ---- Tune these to taste ----
 const HERO_HEIGHT = 360; // expanded hero image height
 const HERO_MIN_SIZE = 72; // collapsed hero image size (square, top-left)
-const HEADER_TOP = 50; // top offset for the collapsed header row
+const HEADER_TOP =66; // top offset for the collapsed header row
 const COLLAPSE_RANGE = HERO_HEIGHT - HERO_MIN_SIZE; // scroll distance over which collapse happens
 
 const DAYS_OF_WEEK = [

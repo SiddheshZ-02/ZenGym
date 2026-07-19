@@ -175,18 +175,18 @@ const PlansScreen = () => {
           "Unlock the selected Standard/Premium Exercise for 1 hour by watching an ad",
         ],
       },
-      {
-        id: "standard",
-        name: "Standard",
-        price: "$4.99",
-        priceUnit: "/month",
-        features: [
-          "All Beginner/Intermediate Workout",
-          "exercise animations",
-          "Unlock the selected Premium Exercise for 1 hour by watching an ad",
-        ],
-        isFeatured: true,
-      },
+      // {
+      //   id: "standard",
+      //   name: "Standard",
+      //   price: "$4.99",
+      //   priceUnit: "/month",
+      //   features: [
+      //     "All Beginner/Intermediate Workout",
+      //     "exercise animations",
+      //     "Unlock the selected Premium Exercise for 1 hour by watching an ad",
+      //   ],
+      //   isFeatured: true,
+      // },
       {
         id: "premium",
         name: "Premium",
@@ -195,8 +195,7 @@ const PlansScreen = () => {
         features: [
           "All features Unlock ",
           "All Workout Unlock",
-          "exercise animations",
-          "Priority support",
+          "exercise animations",  
           "Ad-free experience",
         ],
       },

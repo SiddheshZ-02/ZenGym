@@ -8,17 +8,17 @@ import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  RefreshControl,
-  View,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -184,6 +184,7 @@ const ProfileScreen = () => {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -194,6 +195,10 @@ const ProfileScreen = () => {
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
+
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [profile?.avatar_url]);
 
   useEffect(() => {
     if (profile?.username) {
@@ -352,12 +357,13 @@ const ProfileScreen = () => {
                 >
                   {uploading ? (
                     <ActivityIndicator size="large" color="#32CD32" />
-                  ) : profile?.avatar_url ? (
+                  ) : profile?.avatar_url && !avatarFailed ? (
                     <Image
                       source={{ uri: profile.avatar_url }}
                       style={styles.avatarImage}
                       contentFit="cover"
                       cachePolicy="memory-disk"
+                      onError={() => setAvatarFailed(true)}
                     />
                   ) : (
                     <Ionicons name="person" size={56} color="#32CD32" />

@@ -4,7 +4,7 @@ import {
   scheduleDayReminder,
 } from "@/services/ReminderServices";
 import { supabase } from "@/services/supabaseClient";
-import { Alert } from "react-native";
+import { Alert, Linking } from "react-native";
 import { create } from "zustand";
 
 const getAuthStore = () => require("./authStore").useAuthStore;
@@ -61,20 +61,37 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       });
     } catch (error: any) {
       console.error("Error fetching reminder setting:", error);
-      set({ error: error.message ?? "Failed to load reminder", loading: false });
+      set({
+        error: error.message ?? "Failed to load reminder",
+        loading: false,
+      });
     }
   },
 
-  enableReminder: async (hour: number, minute: number, activeDays: string[]) => {
+  enableReminder: async (
+    hour: number,
+    minute: number,
+    activeDays: string[],
+  ) => {
     const user = getAuthStore().getState().user;
     if (!user) return false;
     if (activeDays.length === 0) return false;
 
-    const granted = await requestNotificationPermissions();
-    if (!granted) {
+    const permissionStatus = await requestNotificationPermissions();
+    if (permissionStatus === "denied") {
       Alert.alert(
         "Permission Needed",
-        "Please enable notifications in your settings to get workout reminders.",
+        "Notifications are disabled. Please enable them in Settings to receive workout reminders.",
+        [
+          {
+            text: "Open Settings",
+            onPress: () => Linking.openSettings(),
+          },
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+        ],
       );
       return false;
     }
@@ -83,7 +100,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     const existing = get().setting;
     if (existing?.notification_ids) {
       await Promise.all(
-        Object.values(existing.notification_ids).map((id) => cancelReminder(id)),
+        Object.values(existing.notification_ids).map((id) =>
+          cancelReminder(id),
+        ),
       );
     }
 
@@ -131,7 +150,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     const existing = get().setting;
     if (existing?.notification_ids) {
       await Promise.all(
-        Object.values(existing.notification_ids).map((id) => cancelReminder(id)),
+        Object.values(existing.notification_ids).map((id) =>
+          cancelReminder(id),
+        ),
       );
     }
 
@@ -175,5 +196,6 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     );
   },
 
-  clearReminderSetting: () => set({ setting: null, loading: false, error: null }),
+  clearReminderSetting: () =>
+    set({ setting: null, loading: false, error: null }),
 }));

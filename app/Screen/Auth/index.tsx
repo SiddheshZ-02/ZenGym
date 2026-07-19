@@ -4,7 +4,6 @@ import { useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import LottieView from "lottie-react-native";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // Prevent the splash screen from auto-hiding, ignore any errors
@@ -16,47 +15,50 @@ try {
 
 const SplashScreenComponent = () => {
   const animation = useRef<LottieView>(null);
-  const [animationError, setAnimationError] = useState(false);
   const [animationComplete, setAnimationComplete] = useState(false);
+  const [screenReady, setScreenReady] = useState(false);
   const router = useRouter();
   const { session, initialized } = useAuthStore();
   const { SCREEN } = useResponsive();
 
-  // Wait for both auth initialized and animation complete
   useEffect(() => {
-    if (initialized && animationComplete) {
-      // Hide the native splash screen before navigating, ignore any errors
-      (async () => {
-        try {
-          await SplashScreen.hideAsync();
-        } catch (e) {
-          console.warn("Error hiding splash screen:", e);
-        }
-        if (session) {
-          router.replace("/TabNavigation/HomeScreen");
-        } else {
-          router.replace("/Screen/Auth/LoginScreen");
-        }
-      })();
+    const fallbackTimer = setTimeout(() => setScreenReady(true), 1400);
+    return () => clearTimeout(fallbackTimer);
+  }, []);
+
+  useEffect(() => {
+    if (animationComplete) {
+      setScreenReady(true);
     }
-  }, [router, session, initialized, animationComplete]);
+  }, [animationComplete]);
+
+  useEffect(() => {
+    if (!initialized || !screenReady) return;
+
+    let isActive = true;
+
+    (async () => {
+      try {
+        await SplashScreen.hideAsync();
+      } catch (e) {
+        console.warn("Error hiding splash screen:", e);
+      }
+
+      if (!isActive) return;
+
+      if (session) {
+        router.replace("/TabNavigation/HomeScreen");
+      } else {
+        router.replace("/Screen/Auth/LoginScreen");
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, [router, session, initialized, screenReady]);
 
   const animationSource = require("@assets/animations/intro.json");
-
-  // if (animationError) {
-  //   return (
-  //     <SafeAreaView
-  //       style={{
-  //         flex: 1,
-  //         backgroundColor: "#030303",
-  //         justifyContent: "center",
-  //         alignItems: "center",
-  //       }}
-  //     >
-  //       <ActivityIndicator size="large" color="#32CD32" />
-  //     </SafeAreaView>
-  //   );
-  // }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#030303" }}>
@@ -70,7 +72,7 @@ const SplashScreenComponent = () => {
           width: SCREEN.width,
         }}
         source={animationSource}
-        // onAnimationFailure={() => setAnimationError(true)}
+        onAnimationFailure={() => setAnimationComplete(true)}
         onAnimationFinish={() => setAnimationComplete(true)}
         cacheComposition={true}
       />

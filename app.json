@@ -17,6 +17,10 @@
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.SCHEDULE_EXACT_ALARM"
+      ],
       "package": "com.siddhesh14.zengym",
       "launchMode": "singleTask"
     },

@@ -1,4 +1,4 @@
-import { Platform } from "react-native";
+import { PermissionsAndroid, Platform } from "react-native";
 
 type NotificationsModule = typeof import("expo-notifications");
 
@@ -41,9 +41,21 @@ const dayNameToWeekday: Record<string, number> = {
   Saturday: 7,
 };
 
+async function requestExactAlarmPermission() {
+  if (Platform.OS !== "android") return true;
+  if (Platform.Version < 31) return true;
+
+  const permission = "android.permission.SCHEDULE_EXACT_ALARM" as any;
+  const currentStatus = await PermissionsAndroid.check(permission);
+  if (currentStatus) return true;
+
+  const result = await PermissionsAndroid.request(permission);
+  return !!result;
+}
+
 export async function requestNotificationPermissions() {
   const Notifications = await getNotificationsModule();
-  if (!Notifications) return false;
+  if (!Notifications) return "denied";
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
@@ -53,7 +65,7 @@ export async function requestNotificationPermissions() {
     finalStatus = status;
   }
 
-  if (finalStatus !== "granted") return false;
+  if (finalStatus !== "granted") return finalStatus;
 
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("default", {
@@ -62,9 +74,17 @@ export async function requestNotificationPermissions() {
       vibrationPattern: [0, 250, 250, 250],
       lightColor: "#32CD32",
     });
+
+    const exactAlarmGranted = await requestExactAlarmPermission();
+    if (!exactAlarmGranted) {
+      console.warn(
+        "Exact alarm permission was not granted; reminders may be delayed by the OS.",
+      );
+      return "partial";
+    }
   }
 
-  return true;
+  return finalStatus;
 }
 
 export async function scheduleDayReminder(
@@ -86,21 +106,6 @@ export async function scheduleDayReminder(
       data: { day: dayOfWeek },
     };
 
-    // Use Android-specific weekly trigger and iOS calendar trigger
-    if (Platform.OS === "android") {
-      const id = await Notifications.scheduleNotificationAsync({
-        content,
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-          weekday,
-          hour,
-          minute,
-          channelId: "default",
-        },
-      });
-      return id;
-    }
-
     const id = await Notifications.scheduleNotificationAsync({
       content,
       trigger: {
@@ -109,6 +114,7 @@ export async function scheduleDayReminder(
         hour,
         minute,
         repeats: true,
+        ...(Platform.OS === "android" ? { channelId: "default" } : {}),
       },
     });
 

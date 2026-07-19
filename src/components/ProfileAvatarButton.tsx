@@ -3,9 +3,9 @@ import { useProfileStore } from "@/store/profileStore";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
-import { getResWidth } from './../constants/responsive';
+import { getResWidth } from "./../constants/responsive";
 
 interface ProfileAvatarButtonProps {
   size?: number;
@@ -20,9 +20,9 @@ const useStyles = createThemedStyles((_, _responsive) => {
       backgroundColor: "#1a1a1a",
       alignItems: "center",
       justifyContent: "center",
-      position:"absolute",
-      right:getResWidth(20),
-      top:getResHeight(30)
+      position: "absolute",
+      right: getResWidth(20),
+      top: getResHeight(30),
     },
     image: {
       width: "100%",
@@ -39,11 +39,16 @@ const ProfileAvatarButton = ({ size = 44 }: ProfileAvatarButtonProps) => {
   const router = useRouter();
   const styles = useStyles();
   const { profile, fetchProfile } = useProfileStore();
+  const [imageFailed, setImageFailed] = useState(false);
   const dimension = size;
 
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [profile?.avatar_url]);
 
   const handlePress = () => {
     router.push("/Screen/Profile/ProfileScreen");
@@ -62,12 +67,13 @@ const ProfileAvatarButton = ({ size = 44 }: ProfileAvatarButtonProps) => {
       ]}
       activeOpacity={0.8}
     >
-      {profile?.avatar_url ? (
+      {profile?.avatar_url && !imageFailed ? (
         <Image
           source={{ uri: profile.avatar_url }}
           style={styles.image}
           contentFit="cover"
           cachePolicy="memory-disk"
+          onError={() => setImageFailed(true)}
         />
       ) : (
         <View style={[styles.image, styles.fallback]}>
