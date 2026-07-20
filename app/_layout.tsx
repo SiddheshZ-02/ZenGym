@@ -120,21 +120,19 @@ const App = () => {
   }, []);
 
   useEffect(() => {
+    const navigateFromNotification = (response?: any) => {
+      router.replace({
+        pathname: "/Screen/Auth",
+        params: { returnTo: "/TabNavigation/HomeScreen" },
+      });
+    };
+
     // Handle tapping on a notification to deep-link into the app
     (async () => {
       try {
         const last = await Notifications.getLastNotificationResponse();
         if (last?.notification) {
-          const rawDay = last.notification.request.content.data?.day;
-          const day =
-            typeof rawDay === "string" || typeof rawDay === "number"
-              ? rawDay
-              : undefined;
-          if (day != null)
-            router.push({
-              pathname: "/TabNavigation/WorkoutListsScreen",
-              params: { day },
-            });
+          navigateFromNotification(last);
         }
       } catch (e) {
         // ignore
@@ -142,17 +140,7 @@ const App = () => {
 
       notificationSub.current =
         Notifications.addNotificationResponseReceivedListener((response) => {
-          const rawDay = response.notification.request.content.data?.day;
-          const day =
-            typeof rawDay === "string" || typeof rawDay === "number"
-              ? rawDay
-              : undefined;
-          if (day != null)
-            router.push({
-              pathname: "/TabNavigation/WorkoutListsScreen",
-              params: { day },
-            });
-          else router.push("/TabNavigation/WorkoutListsScreen");
+          navigateFromNotification(response);
         });
     })();
 

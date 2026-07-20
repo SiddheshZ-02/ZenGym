@@ -1,4 +1,4 @@
-import { createThemedStyles, getResWidth } from "@/constants/responsive";
+import { createThemedStyles } from "@/constants/responsive";
 import { useAuthStore } from "@/store/authStore";
 import { useDataStore } from "@/store/dataStore";
 import { useNotificationStore } from "@/store/notificationStore";
@@ -11,21 +11,30 @@ import {
 } from "@expo/vector-icons";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useState, useEffect, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  memo,
+} from "react";
 import {
   ActivityIndicator,
   RefreshControl,
+  SectionList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
   Modal,
-  ScrollView,
   Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import TimePickerModal from "@/components/TimePickerModal";
+import PremiumUnlockModal from "@/components/PremiumUnlockModal";
 
 const DAYS_OF_WEEK = [
   "Monday",
@@ -37,6 +46,196 @@ const DAYS_OF_WEEK = [
   "Sunday",
 ];
 
+const PLACEHOLDER_IMG = "https://placehold.co/80x80/32CD32/000?text=Ex";
+const BLURHASH = "L6PZfSi_.AyE_3t7t7R**0o#DgR4";
+
+const isPremiumWorkout = (workout: any) => {
+  const diff = workout.difficulty?.toLowerCase();
+  return diff === "intermediate" || diff === "advanced";
+};
+
+/* ------------------------------------------------------------------ */
+/* Countdown Timer                                                     */
+/* ------------------------------------------------------------------ */
+const CountdownTimer = memo(({ expiry }: { expiry: number }) => {
+  const [timeLeft, setTimeLeft] = useState(expiry - Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const remaining = expiry - Date.now();
+      setTimeLeft(Math.max(0, remaining));
+      if (remaining <= 0) clearInterval(interval);
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [expiry]);
+
+  const formatted = formatRemaining(timeLeft);
+  return <Text style={countdownStyles.text}>{formatted}</Text>;
+});
+CountdownTimer.displayName = "CountdownTimer";
+
+const countdownStyles = StyleSheet.create({
+  text: { color: "#32CD32", fontWeight: "700", fontSize: 13 },
+});
+
+function formatRemaining(ms: number) {
+  if (ms <= 0) return "0:00";
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+/* ------------------------------------------------------------------ */
+/* Workout Row Item — memoized so unrelated state changes             */
+/* (e.g. reminder toggle, other items unlocking) don't re-render it   */
+/* ------------------------------------------------------------------ */
+type WorkoutItemProps = {
+  item: any;
+  unlocked: boolean;
+  premium: boolean;
+  expiry?: number;
+  onPress: (item: any) => void;
+  onDelete: (id: number) => void;
+  styles: ReturnType<typeof useStyles>;
+};
+
+const WorkoutItem = memo(
+  ({ item, unlocked, premium, expiry, onPress, onDelete, styles }: WorkoutItemProps) => {
+    const handlePress = useCallback(() => onPress(item), [onPress, item]);
+    const handleDelete = useCallback(() => onDelete(item.id), [onDelete, item.id]);
+
+    const imageSource = item.gif_url || item.gifUrl
+      ? { uri: (item.gif_url || item.gifUrl) as string }
+      : PLACEHOLDER_IMG;
+
+    if (premium) {
+      return (
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={handlePress}
+          style={styles.premiumCardWrap}
+        >
+          <LinearGradient
+            colors={["#0a1f0a", "#173617", "#112b11"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.premiumCard}
+          >
+            <View style={styles.rowImageWrapPremium}>
+              <Image
+                source={imageSource}
+                style={styles.rowImagePremium}
+                autoplay={false}
+                contentFit="cover"
+                placeholder={{ blurhash: BLURHASH }}
+                transition={200}
+                recyclingKey={String(item.id)}
+              />
+            </View>
+
+            <View style={styles.flex1}>
+              <View style={styles.premiumTitleRow}>
+                <Text style={styles.rowName} numberOfLines={2}>
+                  {item.name}
+                </Text>
+                <View style={styles.premiumBadgeRow}>
+                  <MaterialCommunityIcons name="crown" size={18} color="#32CD32" />
+                  <Text style={styles.premiumBadgeText}>PREMIUM</Text>
+                </View>
+              </View>
+
+              {!!item.target && (
+                <Text style={styles.rowTarget}>Target: {item.target}</Text>
+              )}
+            </View>
+
+            <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+              <MaterialIcons name="delete-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+
+            {unlocked && expiry && (
+              <View style={styles.countdownWrap}>
+                <CountdownTimer expiry={expiry} />
+              </View>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <TouchableOpacity style={styles.rowCard} onPress={handlePress}>
+        <View style={styles.rowImageWrap}>
+          <Image
+            source={imageSource}
+            style={styles.rowImage}
+            autoplay={false}
+            contentFit="cover"
+            placeholder={{ blurhash: BLURHASH }}
+            transition={200}
+            recyclingKey={String(item.id)}
+          />
+        </View>
+
+        <View style={styles.flex1}>
+          <Text style={styles.rowName} numberOfLines={2}>
+            {item.name}
+          </Text>
+          {!!item.target && (
+            <Text style={styles.rowTarget}>Target: {item.target}</Text>
+          )}
+        </View>
+
+        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+          <MaterialIcons name="delete-outline" size={24} color="#fff" />
+        </TouchableOpacity>
+      </TouchableOpacity>
+    );
+  },
+);
+WorkoutItem.displayName = "WorkoutItem";
+
+/* ------------------------------------------------------------------ */
+/* Section Header — memoized                                          */
+/* ------------------------------------------------------------------ */
+const SectionHeader = memo(
+  ({
+    day,
+    count,
+    expanded,
+    onToggle,
+    styles,
+  }: {
+    day: string;
+    count: number;
+    expanded: boolean;
+    onToggle: (day: string) => void;
+    styles: ReturnType<typeof useStyles>;
+  }) => {
+    const handleToggle = useCallback(() => onToggle(day), [onToggle, day]);
+    return (
+      <View style={styles.accordionHeader}>
+        <Text style={styles.accordionTitle}>
+          {day} ({count})
+        </Text>
+        <TouchableOpacity onPress={handleToggle} hitSlop={8}>
+          <Ionicons
+            name={expanded ? "chevron-up" : "chevron-down"}
+            size={24}
+            color="#32CD32"
+          />
+        </TouchableOpacity>
+      </View>
+    );
+  },
+);
+SectionHeader.displayName = "SectionHeader";
+
+/* ------------------------------------------------------------------ */
+/* Main Screen                                                         */
+/* ------------------------------------------------------------------ */
 const WorkoutListsScreen = () => {
   const {
     workoutList,
@@ -45,6 +244,7 @@ const WorkoutListsScreen = () => {
     fetchWorkoutList,
     setExerciseDay,
   } = useDataStore();
+
   const {
     setting,
     fetchReminderSetting,
@@ -53,43 +253,58 @@ const WorkoutListsScreen = () => {
     syncReminderDays,
     clearReminderSetting,
   } = useNotificationStore();
+
   const { signOut } = useAuthStore();
   const router = useRouter();
   const styles = useStyles();
-  const workoutCount = workoutList.length;
+
   const [refreshing, setRefreshing] = useState(false);
+  // Default all days expanded on first mount so behaviour matches before;
+  // change to {} if you'd rather start collapsed.
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState<any>(null);
   const [showTimePicker, setShowTimePicker] = useState(false);
+
+  const [unlockMap, setUnlockMap] = useState<Record<number, number>>({});
+  const [premiumModalVisible, setPremiumModalVisible] = useState(false);
+  const [selectedPremiumWorkout, setSelectedPremiumWorkout] = useState<any>(null);
+
+  const workoutCount = workoutList.length;
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem("premium_unlocks");
+        if (raw) setUnlockMap(JSON.parse(raw));
+      } catch (e) {
+        console.error("Failed to load unlocks:", e);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     fetchReminderSetting();
     return () => clearReminderSetting();
   }, [fetchReminderSetting, clearReminderSetting]);
 
-  // Days that actually have at least one workout assigned
-const activeDays = useMemo(() => {
-  const daysSet = new Set<string>();
-  workoutList.forEach((w) => {
-    if (w.dayOfWeek && DAYS_OF_WEEK.includes(w.dayOfWeek)) {
-      daysSet.add(w.dayOfWeek);
-    }
-  });
-  return DAYS_OF_WEEK.filter((day) => daysSet.has(day));
-}, [workoutList]);;
+  const activeDays = useMemo(() => {
+    const daysSet = new Set<string>();
+    workoutList.forEach((w) => {
+      if (w.dayOfWeek && DAYS_OF_WEEK.includes(w.dayOfWeek)) daysSet.add(w.dayOfWeek);
+    });
+    return DAYS_OF_WEEK.filter((day) => daysSet.has(day));
+  }, [workoutList]);
 
-  const activeDaysKey = activeDays.slice().sort().join(",");
-
-  // Keep an already-enabled reminder in sync if the user adds/removes days
   useEffect(() => {
-    if (setting?.is_enabled) {
-      syncReminderDays(activeDays);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeDaysKey]);
+    if (setting?.is_enabled) syncReminderDays(activeDays);
+    // syncReminderDays intentionally omitted if it's stable from the store;
+    // keep it in deps only if it's memoized on the store side.
+  }, [activeDays, setting?.is_enabled, syncReminderDays]);
 
-  const groupWorkoutsByDay = () => {
+  // Grouped + flattened into SectionList sections. Memoized so this heavy
+  // grouping only recomputes when workoutList actually changes.
+  const groupedWorkouts = useMemo(() => {
     const grouped: Record<string, any[]> = { Unassigned: [] };
     DAYS_OF_WEEK.forEach((day) => (grouped[day] = []));
 
@@ -100,153 +315,184 @@ const activeDays = useMemo(() => {
         grouped.Unassigned.push(workout);
       }
     });
-
     return grouped;
-  };
+  }, [workoutList]);
 
-  const groupedWorkouts = groupWorkoutsByDay();
+  const sections = useMemo(() => {
+    const order = ["Unassigned", ...DAYS_OF_WEEK];
+    return order
+      .filter((day) => groupedWorkouts[day]?.length > 0)
+      .map((day) => ({
+        title: day,
+        data: expandedDays[day] ? groupedWorkouts[day] : [],
+        fullCount: groupedWorkouts[day].length,
+      }));
+  }, [groupedWorkouts, expandedDays]);
 
-  const onRefresh = async () => {
+  const isUnlocked = useCallback(
+    (id: number) => {
+      const expiry = unlockMap[id];
+      return !!expiry && expiry > Date.now();
+    },
+    [unlockMap],
+  );
+
+  const handlePremiumPress = useCallback(
+    (workout: any) => {
+      if (isUnlocked(workout.id)) {
+        router.push({
+          pathname: "/Screen/ExerciseDetails/ExerciseDetailsScreen",
+          params: { exercisesDetails: workout.id.toString() },
+        });
+      } else {
+        setSelectedPremiumWorkout(workout);
+        setPremiumModalVisible(true);
+      }
+    },
+    [isUnlocked, router],
+  );
+
+  const startUnlock = useCallback(async (workout: any) => {
+    const expiry = Date.now() + 60 * 60 * 1000; // 1 hour access
+    setUnlockMap((prev) => {
+      const next = { ...prev, [workout.id]: expiry };
+      AsyncStorage.setItem("premium_unlocks", JSON.stringify(next)).catch((e) =>
+        console.error("Failed to persist unlocks:", e),
+      );
+      return next;
+    });
+    setPremiumModalVisible(false);
+    showToast("success", "Premium workout unlocked for 1 hour!");
+  }, []);
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchWorkoutList();
-    await fetchReminderSetting();
+    await Promise.all([fetchWorkoutList(), fetchReminderSetting()]);
     setRefreshing(false);
-  };
+  }, [fetchWorkoutList, fetchReminderSetting]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     await signOut();
     showToast("success", "Logged out successfully!");
     router.replace("/Screen/Auth/LoginScreen");
-  };
+  }, [signOut, router]);
 
-  const removeWorkout = async (id: number) => {
-    await removeExerciseFromWorkout(id);
-    showToast("success", "Exercise removed from workout list!");
-  };
+  const removeWorkout = useCallback(
+    async (id: number) => {
+      await removeExerciseFromWorkout(id);
+      showToast("success", "Exercise removed from workout list!");
+    },
+    [removeExerciseFromWorkout],
+  );
 
-  const navigateToExerciseDetails = (exerciseId: number) => {
-    router.push({
-      pathname: "/Screen/ExerciseDetails/ExerciseDetailsScreen",
-      params: { exercisesDetails: exerciseId.toString() },
-    });
-  };
+  const navigateToExerciseDetails = useCallback(
+    (item: any) => {
+      const premium = isPremiumWorkout(item);
+      if (premium) {
+        handlePremiumPress(item);
+        return;
+      }
+      router.push({
+        pathname: "/Screen/ExerciseDetails/ExerciseDetailsScreen",
+        params: { exercisesDetails: item.id.toString() },
+      });
+    },
+    [handlePremiumPress, router],
+  );
 
-  const toggleAccordion = (day: string) => {
+  const toggleAccordion = useCallback((day: string) => {
     setExpandedDays((prev) => ({ ...prev, [day]: !prev[day] }));
-  };
+  }, []);
 
-  const openDayPicker = (exercise: any) => {
+  const openDayPicker = useCallback((exercise: any) => {
     setSelectedExercise(exercise);
     setModalVisible(true);
-  };
+  }, []);
 
-  const selectDay = async (day: string) => {
-    if (selectedExercise) {
-      await setExerciseDay(selectedExercise.id, day);
-      showToast("success", `Exercise assigned to ${day}!`);
-    }
-    setModalVisible(false);
-    setSelectedExercise(null);
-  };
+  const selectDay = useCallback(
+    async (day: string) => {
+      if (selectedExercise) {
+        await setExerciseDay(selectedExercise.id, day);
+        showToast("success", `Exercise assigned to ${day}!`);
+      }
+      setModalVisible(false);
+      setSelectedExercise(null);
+    },
+    [selectedExercise, setExerciseDay],
+  );
 
   const isReminderOn = setting?.is_enabled ?? false;
 
-  const handleReminderToggle = async (value: boolean) => {
-    if (activeDays.length === 0) return; // safety guard, toggle shouldn't even render
-    if (value) {
-      setShowTimePicker(true); // permission is requested on confirm, inside enableReminder
-    } else {
-      await disableReminder();
-      showToast("success", "Workout reminders turned off");
-    }
-  };
-
-  const handleTimeConfirm = async (hour: number, minute: number) => {
-    const success = await enableReminder(hour, minute, activeDays);
-    if (success) {
-      showToast("success", "Workout reminders activated!");
-    } else {
-      showToast("error", "Couldn't set reminder. Check notification permissions.");
-    }
-    setShowTimePicker(false);
-  };
-
-  const renderWorkoutItem = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={styles.rowCard}
-      onPress={() => navigateToExerciseDetails(item.id)}
-    >
-      <View style={styles.rowImageWrap}>
-        <Image
-          source={
-            item.gif_url || item.gifUrl
-              ? { uri: (item.gif_url || item.gifUrl) as string }
-              : "https://placehold.co/80x80/32CD32/000?text=Ex"
-          }
-          style={styles.rowImage}
-          autoplay={false}
-          contentFit="cover"
-          placeholder={{ blurhash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4" }}
-          transition={200}
-          cachePolicy="memory-disk"
-        />
-      </View>
-
-      <View style={{ flex: 1 }}>
-        <Text style={styles.rowName} numberOfLines={2}>
-          {item.name}
-        </Text>
-        {!!item.target && (
-          <Text style={styles.rowTarget}>Target: {item.target}</Text>
-        )}
-      </View>
-
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => removeWorkout(item.id)}
-      >
-        <MaterialIcons name="delete-outline" size={24} color="#fff" />
-      </TouchableOpacity>
-    </TouchableOpacity>
+  const handleReminderToggle = useCallback(
+    async (value: boolean) => {
+      if (activeDays.length === 0) return;
+      if (value) {
+        setShowTimePicker(true);
+      } else {
+        await disableReminder();
+        showToast("success", "Workout reminders turned off");
+      }
+    },
+    [activeDays, disableReminder],
   );
 
-  const renderAccordion = (day: string, workouts: any[]) => {
-    if (workouts.length === 0 && day !== "Unassigned") return null;
+  const handleTimeConfirm = useCallback(
+    async (hour: number, minute: number) => {
+      const success = await enableReminder(hour, minute, activeDays);
+      if (success) {
+        showToast("success", "Workout reminders activated!");
+      } else {
+        showToast("error", "Couldn't set reminder. Check notification permissions.");
+      }
+      setShowTimePicker(false);
+    },
+    [enableReminder, activeDays],
+  );
 
-    return (
-      <View key={day}>
-        <View style={styles.accordionItem}>
-          <View style={styles.accordionHeader}>
-            <Text style={styles.accordionTitle}>
-              {day} ({workouts.length})
-            </Text>
-            <TouchableOpacity onPress={() => toggleAccordion(day)}>
-              <Ionicons
-                name={expandedDays[day] ? "chevron-up" : "chevron-down"}
-                size={24}
-                color="#32CD32"
-              />
-            </TouchableOpacity>
-          </View>
+  const closePremiumModal = useCallback(() => setPremiumModalVisible(false), []);
+  const closeDayModal = useCallback(() => setModalVisible(false), []);
+  const closeTimePicker = useCallback(() => setShowTimePicker(false), []);
+  const onWatchPremium = useCallback(() => {
+    if (selectedPremiumWorkout) startUnlock(selectedPremiumWorkout);
+  }, [selectedPremiumWorkout, startUnlock]);
 
-          {expandedDays[day] && (
-            <View style={styles.accordionContent}>
-              {workouts.map((item) => (
-                <View key={item.id}>{renderWorkoutItem({ item })}</View>
-              ))}
-              {workouts.length === 0 && (
-                <Text
-                  style={{ color: "#666", textAlign: "center", padding: 20 }}
-                >
-                  No workouts for {day}
-                </Text>
-              )}
-            </View>
-          )}
+  const renderItem = useCallback(
+    ({ item }: { item: any }) => {
+      const premium = isPremiumWorkout(item);
+      const unlocked = premium && isUnlocked(item.id);
+      return (
+        <View style={styles.itemSpacing}>
+          <WorkoutItem
+            item={item}
+            premium={premium}
+            unlocked={unlocked}
+            expiry={unlockMap[item.id]}
+            onPress={navigateToExerciseDetails}
+            onDelete={removeWorkout}
+            styles={styles}
+          />
         </View>
-      </View>
-    );
-  };
+      );
+    },
+    [isUnlocked, unlockMap, navigateToExerciseDetails, removeWorkout, styles],
+  );
+
+  const renderSectionHeader = useCallback(
+    ({ section }: { section: (typeof sections)[number] }) => (
+      <SectionHeader
+        day={section.title}
+        count={section.fullCount}
+        expanded={!!expandedDays[section.title]}
+        onToggle={toggleAccordion}
+        styles={styles}
+      />
+    ),
+    [expandedDays, toggleAccordion, styles],
+  );
+
+  const keyExtractor = useCallback((item: any) => String(item.id), []);
+
+  const activeDaysLabel = useMemo(() => activeDays.join(", "), [activeDays]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -265,12 +511,12 @@ const activeDays = useMemo(() => {
               {workoutCount} {workoutCount === 1 ? "workout" : "workouts"}
             </Text>
           </View>
+
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <AntDesign name="logout" size={24} color="#ff4444" />
           </TouchableOpacity>
         </View>
 
-        {/* Single reminder toggle — only shown when there's at least one day with workouts */}
         {activeDays.length > 0 && (
           <View style={styles.reminderBar}>
             <View style={styles.reminderBarLeft}>
@@ -279,16 +525,12 @@ const activeDays = useMemo(() => {
                 size={20}
                 color="#32CD32"
               />
-              <View style={{ marginLeft: 10 }}>
+              <View style={styles.reminderTextWrap}>
                 <Text style={styles.reminderBarTitle}>Workout Reminders</Text>
                 <Text style={styles.reminderBarSubtitle}>
                   {isReminderOn && setting?.reminder_time
-                    ? `On at ${formatTime(setting.reminder_time)} · ${activeDays.length} ${
-                        activeDays.length === 1 ? "day" : "days"
-                      }`
-                    : `Get notified on your ${activeDays.length} workout ${
-                        activeDays.length === 1 ? "day" : "days"
-                      }`}
+                    ? `On at ${formatTime(setting.reminder_time)} · ${activeDays.length} ${activeDays.length === 1 ? "day" : "days"}`
+                    : `Get notified on your ${activeDays.length} workout ${activeDays.length === 1 ? "day" : "days"}`}
                 </Text>
               </View>
             </View>
@@ -310,40 +552,46 @@ const activeDays = useMemo(() => {
             <AntDesign name="inbox" size={80} color="#666" />
             <Text style={styles.emptyTitle}>No workouts added yet</Text>
             <Text style={styles.emptyText}>
-              Add exercises from the body parts section to build your workout
-              list
+              Add exercises from the body parts section to build your workout list
             </Text>
           </View>
         ) : (
-          <ScrollView
+          <SectionList
+            sections={sections}
+            keyExtractor={keyExtractor}
+            renderItem={renderItem}
+            renderSectionHeader={renderSectionHeader}
             contentContainerStyle={styles.listContent}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
                 colors={["#32CD32"]}
-                tintColor="#32CD32"
               />
             }
             showsVerticalScrollIndicator={false}
-          >
-            {groupedWorkouts.Unassigned.length > 0 && (
-              <View style={styles.unassignedSection}>
-                {renderAccordion("Unassigned", groupedWorkouts.Unassigned)}
-              </View>
-            )}
-            {DAYS_OF_WEEK.map((day) =>
-              renderAccordion(day, groupedWorkouts[day]),
-            )}
-          </ScrollView>
+            // --- Smoothness / perf tuning ---
+            initialNumToRender={8}
+            maxToRenderPerBatch={8}
+            windowSize={7}
+            updateCellsBatchingPeriod={50}
+            removeClippedSubviews
+            stickySectionHeadersEnabled={false}
+          />
         )}
       </View>
 
+      <PremiumUnlockModal
+        visible={premiumModalVisible}
+        onRequestClose={closePremiumModal}
+        onWatch={onWatchPremium}
+      />
+
       <Modal
         visible={modalVisible}
-        transparent={true}
+        transparent
         animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={closeDayModal}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
@@ -357,10 +605,7 @@ const activeDays = useMemo(() => {
                 <Text style={styles.dayButtonText}>{day}</Text>
               </TouchableOpacity>
             ))}
-            <TouchableOpacity
-              style={styles.closeModalButton}
-              onPress={() => setModalVisible(false)}
-            >
+            <TouchableOpacity style={styles.closeModalButton} onPress={closeDayModal}>
               <Text style={styles.closeModalButtonText}>Cancel</Text>
             </TouchableOpacity>
           </View>
@@ -370,31 +615,23 @@ const activeDays = useMemo(() => {
       {showTimePicker && (
         <TimePickerModal
           visible={showTimePicker}
-        dayOfWeek={activeDays.join(", ")}
+          dayOfWeek={activeDaysLabel}
           onConfirm={handleTimeConfirm}
-          onCancel={() => setShowTimePicker(false)}
+          onCancel={closeTimePicker}
         />
       )}
     </SafeAreaView>
   );
 };
 
-function formatTime(time: string) {
-  const [hourStr, minuteStr] = time.split(":");
-  const hour = parseInt(hourStr, 10);
-  const minute = parseInt(minuteStr, 10);
-  const period = hour >= 12 ? "PM" : "AM";
-  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
-  return `${displayHour}:${minute.toString().padStart(2, "0")} ${period}`;
-}
-
 const useStyles = createThemedStyles((_, responsive) => {
-  const { spacing, radius, fontSizes, ms, wp, containerMaxWidth } = responsive;
+  const { spacing, radius, fontSizes, wp, ms, containerMaxWidth } = responsive;
   const imageSize = wp(50);
 
   return StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: "#000" },
     screen: { flex: 1, backgroundColor: "#000" },
+    flex1: { flex: 1 },
     header: {
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.md,
@@ -408,23 +645,14 @@ const useStyles = createThemedStyles((_, responsive) => {
       alignSelf: "center",
     },
     headerCenter: { flex: 1, alignItems: "center" },
-    title: {
-      fontSize: fontSizes.xl,
-      fontWeight: "bold",
-      color: "#32CD32",
-      textAlign: "center",
-    },
-    subtitle: {
-      fontSize: fontSizes.md,
-      color: "#999",
-      textAlign: "center",
-      marginTop: spacing.xs,
-    },
+    title: { fontSize: fontSizes.xl, fontWeight: "bold", color: "#32CD32" },
+    subtitle: { fontSize: fontSizes.md, color: "#999", marginTop: spacing.xs },
     logoutButton: {
       padding: spacing.sm,
       backgroundColor: "#2a2a2a",
       borderRadius: radius.md,
     },
+
     reminderBar: {
       flexDirection: "row",
       alignItems: "center",
@@ -434,44 +662,24 @@ const useStyles = createThemedStyles((_, responsive) => {
       marginTop: spacing.md,
       padding: spacing.md,
       borderRadius: radius.lg,
-      maxWidth: containerMaxWidth,
-      width: `calc(100% - ${spacing.md * 2}px)` as any,
-      alignSelf: "center",
     },
-    reminderBarLeft: {
-      flexDirection: "row",
-      alignItems: "center",
-      flex: 1,
-    },
-    reminderBarTitle: {
-      color: "#fff",
-      fontWeight: "600",
-      fontSize: fontSizes.md,
-    },
-    reminderBarSubtitle: {
-      color: "#999",
-      fontSize: fontSizes.xs,
-      marginTop: 2,
-    },
-    loadingState: {
-      flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      backgroundColor: "#000",
-    },
+    reminderBarLeft: { flexDirection: "row", alignItems: "center", flex: 1 },
+    reminderTextWrap: { marginLeft: 10 },
+    reminderBarTitle: { color: "#fff", fontWeight: "600", fontSize: fontSizes.md },
+    reminderBarSubtitle: { color: "#999", fontSize: fontSizes.xs, marginTop: 2 },
+
+    loadingState: { flex: 1, justifyContent: "center", alignItems: "center" },
     emptyState: {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
       paddingHorizontal: spacing.xl,
-      backgroundColor: "#000",
     },
     emptyTitle: {
       fontSize: fontSizes.lg,
       fontWeight: "600",
       color: "#fff",
       marginTop: spacing.lg,
-      textAlign: "center",
     },
     emptyText: {
       fontSize: fontSizes.md,
@@ -480,13 +688,10 @@ const useStyles = createThemedStyles((_, responsive) => {
       textAlign: "center",
       lineHeight: ms(24),
     },
-    listContent: {
-      padding: spacing.md,
-      paddingBottom: spacing.xxl,
-      alignSelf: "center",
-      width: "100%",
-      maxWidth: containerMaxWidth,
-    },
+
+    listContent: { padding: spacing.md, paddingBottom: spacing.xxl },
+    itemSpacing: { marginBottom: 8 },
+
     accordionHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -494,27 +699,37 @@ const useStyles = createThemedStyles((_, responsive) => {
       backgroundColor: "#1a1a1a",
       padding: spacing.md,
       borderRadius: radius.lg,
-    },
-    accordionItem: {
-      backgroundColor: "#1a1a1a",
-      padding: spacing.sm,
-      borderRadius: radius.lg,
       marginBottom: spacing.sm,
     },
-    accordionTitle: {
-      fontSize: fontSizes.lg,
-      fontWeight: "bold",
-      color: "#fff",
-    },
-    accordionContent: { marginBottom: spacing.md },
+    accordionTitle: { fontSize: fontSizes.lg, fontWeight: "bold", color: "#fff" },
+
     rowCard: {
       flexDirection: "row",
       backgroundColor: "#2a2a2a",
       borderRadius: radius.lg,
       padding: spacing.sm,
-      marginBottom: spacing.sm,
       alignItems: "center",
     },
+
+    premiumCardWrap: {
+      borderRadius: radius.lg,
+      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: "rgba(50, 205, 50, 0.6)",
+      shadowColor: "#32CD32",
+      shadowOpacity: 0.5,
+      shadowRadius: 10,
+      elevation: 6,
+    },
+    premiumCard: { flexDirection: "row", alignItems: "center", padding: spacing.sm },
+    premiumTitleRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+    },
+    premiumBadgeRow: { flexDirection: "row", alignItems: "center" },
+    countdownWrap: { position: "absolute", right: 70, bottom: 12 },
+
     rowImageWrap: {
       width: imageSize,
       height: imageSize,
@@ -522,20 +737,39 @@ const useStyles = createThemedStyles((_, responsive) => {
       overflow: "hidden",
       marginRight: spacing.md,
     },
+    rowImageWrapPremium: {
+      width: imageSize,
+      height: imageSize,
+      borderRadius: radius.md,
+      overflow: "hidden",
+      marginRight: spacing.md,
+      backgroundColor: "#fff",
+      padding: 4,
+    },
     rowImage: { width: "100%", height: "100%", backgroundColor: "#1a1a1a" },
+    rowImagePremium: { width: "100%", height: "100%", borderRadius: radius.sm },
+
     rowName: {
       fontSize: fontSizes.lg,
       fontWeight: "600",
       color: "#fff",
       marginBottom: spacing.xxs,
+      flex: 1,
     },
-    rowTarget: { fontSize: fontSizes.sm, color: "#999" },
+    rowTarget: { fontSize: fontSizes.sm, color: "#999", width: "70%" },
+    premiumBadgeText: {
+      fontSize: fontSizes.xs,
+      fontWeight: "800",
+      color: "#32CD32",
+      marginLeft: 4,
+    },
     deleteButton: {
       padding: spacing.xs,
       backgroundColor: "red",
       borderRadius: radius.lg,
       marginLeft: spacing.xs,
     },
+
     modalContainer: {
       flex: 1,
       backgroundColor: "rgba(0,0,0,0.7)",
@@ -572,8 +806,16 @@ const useStyles = createThemedStyles((_, responsive) => {
       alignItems: "center",
     },
     closeModalButtonText: { fontSize: fontSizes.md, color: "#fff" },
-    unassignedSection: { marginBottom: spacing.md },
   });
 });
+
+function formatTime(time: string) {
+  const [hourStr, minuteStr] = time.split(":");
+  const hour = parseInt(hourStr, 10);
+  const minute = parseInt(minuteStr, 10);
+  const period = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+  return `${displayHour}:${minute.toString().padStart(2, "0")} ${period}`;
+}
 
 export default WorkoutListsScreen;

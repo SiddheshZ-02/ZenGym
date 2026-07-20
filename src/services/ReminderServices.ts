@@ -106,10 +106,15 @@ export async function scheduleDayReminder(
       data: { day: dayOfWeek },
     };
 
+    const triggerType =
+      Platform.OS === "android"
+        ? Notifications.SchedulableTriggerInputTypes.WEEKLY
+        : Notifications.SchedulableTriggerInputTypes.CALENDAR;
+
     const id = await Notifications.scheduleNotificationAsync({
       content,
       trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+        type: triggerType,
         weekday,
         hour,
         minute,

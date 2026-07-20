@@ -1,6 +1,6 @@
 import { useResponsive } from "@/constants/responsive";
 import { useAuthStore } from "@/store/authStore";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import LottieView from "lottie-react-native";
 import { useEffect, useRef, useState } from "react";
@@ -18,6 +18,7 @@ const SplashScreenComponent = () => {
   const [animationComplete, setAnimationComplete] = useState(false);
   const [screenReady, setScreenReady] = useState(false);
   const router = useRouter();
+  const params = useLocalSearchParams<{ returnTo?: string }>();
   const { session, initialized } = useAuthStore();
   const { SCREEN } = useResponsive();
 
@@ -46,8 +47,18 @@ const SplashScreenComponent = () => {
 
       if (!isActive) return;
 
+      const returnTo =
+        typeof params.returnTo === "string" && params.returnTo
+          ? params.returnTo
+          : "/TabNavigation/HomeScreen";
+
+      const targetPath =
+        returnTo === "/TabNavigation/HomeScreen"
+          ? "/TabNavigation/HomeScreen"
+          : "/TabNavigation/HomeScreen";
+
       if (session) {
-        router.replace("/TabNavigation/HomeScreen");
+        router.replace(targetPath);
       } else {
         router.replace("/Screen/Auth/LoginScreen");
       }
